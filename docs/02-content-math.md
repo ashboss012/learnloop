@@ -1,0 +1,49 @@
+# 02. Content: Math
+
+Math is the easiest subject to make safe and the right one to build first, because the answer can be computed and checked in code. No LLM is trusted for a math answer, ever.
+
+## The generation pattern
+
+Do not ask an LLM to write a problem and its answer. LLMs get arithmetic wrong. Instead:
+
+1. Define a problem template with parameter ranges. Example, a two-digit by one-digit multiplication template with the first factor from 10 to 99 and the second from 2 to 9.
+2. Pick the actual numbers in code.
+3. Compute the answer in code. This is ground truth.
+4. Optionally use an LLM only for the wrapping, phrasing a word problem around the numbers and writing a plain explanation. The model touches language, never truth.
+
+For many templates you do not need an LLM at all. A word-problem phrasing bank plus slot-filling covers a lot and costs nothing.
+
+## Where the curriculum knowledge comes from
+
+The valuable asset is the sequencing in my head as a Mathnasium instructor, how topics ramp and where kids stall. That is mine and it goes into the templates and their difficulty ordering. It does not come from copying anyone's problem set. We generate original problems from parameters. The math itself is not copyrightable, the specific expression of someone else's problems is, so we simply do not use theirs.
+
+## Skill taxonomy
+
+Organize math into a tree of skills so the loop can pull from a specific skill and difficulty. Rough 4th grade shape.
+
+- Multiplication (single digit, multi digit, word problems)
+- Division (basic, long division, remainders)
+- Fractions (identify, compare, add, subtract)
+- Decimals (place value, compare, add, subtract)
+- Word problems (multi step)
+
+Each skill has difficulty tiers driven by parameter ranges and template complexity.
+
+## Question types
+
+- Direct compute (text input)
+- Multiple choice with generated distractors. Generate wrong choices in code using common error patterns, for example off-by-one, wrong operation, place-value slips, so the distractors are pedagogically real
+- Word problems (text input or choice)
+
+## Explanations
+
+Explanations can be templated per skill so they are correct by construction. Reserve LLM-written explanations for cases where templating is too rigid, and route those through the review pipeline (see 05) since even explanations can be wrong.
+
+## Cost
+
+Effectively zero. Generation is code. If an LLM is used for phrasing it runs offline in batches, not at serve time.
+
+## Not in v1
+
+- Geometry and measurement, add after the core four operations land
+- Anything requiring image generation
