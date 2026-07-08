@@ -168,3 +168,53 @@ $$;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- ─── RPCs ─────────────────────────────────────────────────────────────────────
+
+create or replace function public.increment_xp(uid uuid, amount int)
+returns void language plpgsql security definer as $$
+begin
+  update public.users set xp_total = xp_total + amount where id = uid;
+end;
+$$;
+
+create or replace function public.update_streak(uid uuid)
+returns int language plpgsql security definer as $$
+declare
+  streak_row public.streaks%rowtype;
+  today date := current_date;
+begin
+  select * into streak_row from public.streaks where user_id = uid;
+
+  if streak_row.last_active_date = today then
+    -- Already logged today, no change
+    return streak_row.current_streak;
+  elsif streak_row.last_active_date = today - interval '1 day' then
+    -- Consecutive day
+    update public.streaks
+      set current_streak = current_streak + 1,
+          longest_streak = greatest(longest_streak, current_streak + 1),
+          last_active_date = today
+      where user_id = uid;
+    return streak_row.current_streak + 1;
+  elsif streak_row.last_active_date = today - interval '2 days'
+        and streak_row.freezes_available > 0 then
+    -- Use a freeze
+    update public.streaks
+      set current_streak = current_streak + 1,
+          longest_streak = greatest(longest_streak, current_streak + 1),
+          last_active_date = today,
+          freezes_available = freezes_available - 1
+      where user_id = uid;
+    return streak_row.current_streak + 1;
+  else
+    -- Streak broken (or first time)
+    update public.streaks
+      set current_streak = 1,
+          longest_streak = greatest(longest_streak, 1),
+          last_active_date = today
+      where user_id = uid;
+    return 1;
+  end if;
+end;
+$$;

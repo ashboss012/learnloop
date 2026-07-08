@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #fdfbf7;
+  --surface: #ffffff;
+  --primary: #6c63ff;
+  --primary-dark: #5a52e0;
+  --correct: #22c55e;
+  --wrong: #ef4444;
+  --xp: #f59e0b;
+  --text: #1a1a2e;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Nunito', 'Comic Sans MS', system-ui, sans-serif;
+}
