@@ -17,4 +17,20 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: 'Nunito', 'Comic Sans MS', system-ui, sans-serif;
+  /* prevent iOS bounce scroll on the body */
+  overscroll-behavior: none;
 }
+
+/* Remove 300ms tap delay on all interactive elements */
+button, a, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* Ensure buttons have a minimum 44px tap target (Apple HIG / WCAG 2.5.5) */
+button {
+  min-height: 44px;
+}
+
+/* Safe area insets for notched phones */
+.safe-top    { padding-top:    env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }

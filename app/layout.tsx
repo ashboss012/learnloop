@@ -4,6 +4,7 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'LearnLoop',
   description: 'A fun, forgiving way to practice math',
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

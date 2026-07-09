@@ -29,13 +29,20 @@ export default function StartSessionButton({ skill, color, icon }: Props) {
     <button
       onClick={handleClick}
       disabled={loading}
-      className="rounded-3xl p-5 text-left transition-all active:scale-95 hover:shadow-lg"
-      style={{ background: color + '15', border: `2px solid ${color}30` }}
+      className="rounded-3xl text-left transition-all active:scale-95"
+      style={{
+        background: color + '15',
+        border: `2.5px solid ${color}40`,
+        padding: '20px 18px',
+        minHeight: 110,
+        width: '100%',
+        opacity: loading ? 0.7 : 1,
+      }}
     >
-      <div className="text-3xl mb-2">{loading ? '⏳' : icon}</div>
-      <div className="font-black text-base" style={{ color }}>{skill.name}</div>
-      <div className="text-xs font-semibold text-gray-400 mt-0.5">
-        {loading ? 'Starting...' : 'Tap to practice'}
+      <div style={{ fontSize: 36, lineHeight: 1, marginBottom: 10 }}>{loading ? '⏳' : icon}</div>
+      <div className="font-black" style={{ color, fontSize: '1.05rem' }}>{skill.name}</div>
+      <div className="font-semibold mt-1" style={{ color: '#9ca3af', fontSize: '0.8rem' }}>
+        {loading ? 'Starting…' : 'Tap to practice'}
       </div>
     </button>
   )

@@ -37,23 +37,25 @@ export default async function Dashboard() {
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-white border-b-2 px-4 py-3 flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-        <span className="text-2xl font-black" style={{ color: 'var(--primary)' }}>🧠 LearnLoop</span>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1 font-bold text-sm" style={{ color: 'var(--xp)' }}>
-            <span>⚡</span><span>{xp} XP</span>
-          </div>
-          <div className="flex items-center gap-1 font-bold text-sm" style={{ color: '#f97316' }}>
-            <span>🔥</span><span>{currentStreak}</span>
-          </div>
-          {freezes > 0 && (
-            <div className="flex items-center gap-1 font-bold text-sm text-blue-400">
-              <span>🧊</span><span>{freezes}</span>
+      <header className="safe-top sticky top-0 z-10 bg-white border-b-2" style={{ borderColor: 'var(--border)' }}>
+        <div className="px-4 py-3 flex items-center justify-between gap-2">
+          <span className="text-xl font-black shrink-0" style={{ color: 'var(--primary)' }}>🧠 LearnLoop</span>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-1 font-black text-sm shrink-0" style={{ color: 'var(--xp)' }}>
+              ⚡<span>{xp}</span>
             </div>
-          )}
-          <form action="/api/auth/signout" method="POST">
-            <button className="text-xs text-gray-400 font-semibold hover:text-gray-600">Sign out</button>
-          </form>
+            <div className="flex items-center gap-1 font-black text-sm shrink-0" style={{ color: '#f97316' }}>
+              🔥<span>{currentStreak}</span>
+            </div>
+            {freezes > 0 && (
+              <div className="flex items-center gap-1 font-black text-sm shrink-0 text-blue-400">
+                🧊<span>{freezes}</span>
+              </div>
+            )}
+            <form action="/api/auth/signout" method="POST">
+              <button className="text-xs text-gray-400 font-semibold hover:text-gray-600 shrink-0" style={{ minHeight: 44, padding: '0 4px' }}>out</button>
+            </form>
+          </div>
         </div>
       </header>
 

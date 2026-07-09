@@ -92,33 +92,57 @@ export default function SessionRunner({ sessionId, questionIds, skillName }: Pro
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
-      <div className="sticky top-0 z-10 bg-white border-b-2 px-4 py-3" style={{ borderColor: 'var(--border)' }}>
-        <div className="max-w-lg mx-auto flex items-center gap-3">
-          <button onClick={() => router.push('/dashboard')} className="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">x</button>
-          <div className="flex-1 bg-gray-200 rounded-full h-3 overflow-hidden">
-            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progressPct}%`, background: 'var(--primary)' }} />
+      {/* Top bar — sticky, safe-area aware */}
+      <div className="safe-top sticky top-0 z-10 bg-white border-b-2" style={{ borderColor: 'var(--border)' }}>
+        <div className="max-w-lg mx-auto flex items-center gap-3 px-4 py-3">
+          {/* Close button — 44×44 tap target */}
+          <button
+            onClick={() => router.push('/dashboard')}
+            aria-label="Exit session"
+            className="flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            style={{ width: 44, height: 44, fontSize: 22, lineHeight: 1 }}
+          >
+            ✕
+          </button>
+          {/* Progress bar */}
+          <div className="flex-1 bg-gray-200 rounded-full overflow-hidden" style={{ height: 12 }}>
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${progressPct}%`, background: 'var(--primary)' }}
+            />
           </div>
-          <span className="text-sm font-bold text-gray-400 min-w-14 text-right">{completedIds.size}/{totalUnique}</span>
+          <span className="text-sm font-black tabular-nums" style={{ color: 'var(--muted)', minWidth: '3.5rem', textAlign: 'right' }}>
+            {completedIds.size}/{totalUnique}
+          </span>
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto w-full px-4 pt-5 pb-2">
-        <span className="text-xs font-black uppercase tracking-wider" style={{ color: 'var(--primary)' }}>{skillName}</span>
+      {/* Skill label */}
+      <div className="max-w-lg mx-auto w-full px-5 pt-5 pb-2">
+        <span className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{skillName}</span>
       </div>
 
-      <div className="flex-1 max-w-lg mx-auto w-full px-4 pb-8 flex flex-col">
+      {/* Main content */}
+      <div className="flex-1 max-w-lg mx-auto w-full px-4 flex flex-col" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
+
         {phase === 'loading' && (
           <div className="flex-1 flex items-center justify-center">
-            <div className="text-4xl animate-spin">*</div>
+            <div style={{ width: 48, height: 48, border: '5px solid #e5e7eb', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
         )}
 
         {(phase === 'question' || phase === 'feedback') && question && (
           <>
-            <div className="rounded-3xl p-6 mb-6 text-2xl font-black leading-snug" style={{ background: 'white', border: '2px solid var(--border)', minHeight: 120 }}>
+            {/* Question card */}
+            <div
+              className="rounded-3xl p-6 mb-5 font-black leading-snug"
+              style={{ background: 'white', border: '2px solid var(--border)', fontSize: 'clamp(1.25rem, 5vw, 1.75rem)', minHeight: 110 }}
+            >
               {question.prompt}
             </div>
 
+            {/* Choice buttons */}
             <div className="space-y-3 flex-1">
               {question.choices?.map(choice => {
                 let bg = 'white', border = 'var(--border)', textColor = 'var(--text)'
@@ -127,33 +151,53 @@ export default function SessionRunner({ sessionId, questionIds, skillName }: Pro
                   else if (choice.value === feedback.chosen && !feedback.correct) { bg = '#fee2e2'; border = 'var(--wrong)'; textColor = '#991b1b' }
                 }
                 return (
-                  <button key={choice.value} onClick={() => handleChoice(choice.value)} disabled={phase === 'feedback'}
-                    className="w-full text-left rounded-2xl px-5 py-4 font-bold text-lg transition-all"
-                    style={{ background: bg, border: `2px solid ${border}`, color: textColor }}>
+                  <button
+                    key={choice.value}
+                    onClick={() => handleChoice(choice.value)}
+                    disabled={phase === 'feedback'}
+                    className="w-full text-left rounded-2xl font-bold transition-colors"
+                    style={{
+                      background: bg,
+                      border: `2.5px solid ${border}`,
+                      color: textColor,
+                      fontSize: 'clamp(1rem, 4vw, 1.125rem)',
+                      padding: '14px 20px',
+                      minHeight: 56,
+                      cursor: phase === 'feedback' ? 'default' : 'pointer',
+                    }}
+                  >
                     {choice.label}
                   </button>
                 )
               })}
             </div>
 
+            {/* Feedback panel */}
             {phase === 'feedback' && feedback && (
-              <div className="mt-6">
-                <div className="rounded-3xl p-5 mb-4" style={{ background: feedback.correct ? '#dcfce7' : '#fee2e2' }}>
-                  <p className="font-black text-lg mb-1" style={{ color: feedback.correct ? '#166534' : '#991b1b' }}>
-                    {feedback.correct ? 'Correct!' : 'Not quite!'}
+              <div className="mt-5">
+                <div
+                  className="rounded-3xl p-5 mb-4"
+                  style={{ background: feedback.correct ? '#dcfce7' : '#fee2e2' }}
+                >
+                  <p className="font-black text-xl mb-1" style={{ color: feedback.correct ? '#166534' : '#991b1b' }}>
+                    {feedback.correct ? '✅ Correct!' : '❌ Not quite!'}
                   </p>
                   {!feedback.correct && (
-                    <p className="font-semibold text-sm" style={{ color: '#991b1b' }}>
+                    <p className="font-semibold text-base mt-1" style={{ color: '#991b1b' }}>
                       The answer is <strong>{feedback.correctAnswer}</strong>
                     </p>
                   )}
-                  <p className="text-sm font-semibold mt-2 text-gray-700">{feedback.explanation}</p>
+                  <p className="text-sm font-semibold mt-2 text-gray-700 leading-relaxed">{feedback.explanation}</p>
                   {!feedback.correct && (
-                    <p className="text-xs font-bold mt-2 text-orange-600">You will see this one again — keep going!</p>
+                    <p className="text-sm font-bold mt-2 text-orange-600">{"You'll see this one again — keep going! 💪"}</p>
                   )}
                 </div>
-                <button onClick={handleContinue} className="w-full py-4 rounded-2xl font-black text-xl text-white transition-all active:scale-95" style={{ background: 'var(--primary)' }}>
-                  {feedback.correct && completedIds.size >= totalUnique - 1 ? 'Finish!' : 'Continue'}
+                <button
+                  onClick={handleContinue}
+                  className="w-full rounded-2xl font-black text-white transition-all active:scale-95"
+                  style={{ background: 'var(--primary)', fontSize: '1.25rem', padding: '16px 24px', minHeight: 60 }}
+                >
+                  {feedback.correct && completedIds.size >= totalUnique - 1 ? 'Finish! 🎉' : 'Continue →'}
                 </button>
               </div>
             )}
@@ -167,27 +211,38 @@ export default function SessionRunner({ sessionId, questionIds, skillName }: Pro
 function CompletionScreen({ xp, streak, onDone }: { xp: number; streak: number; onDone: () => void }) {
   const [visible, setVisible] = useState(false)
   useEffect(() => { const t = setTimeout(() => setVisible(true), 100); return () => clearTimeout(t) }, [])
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+    <div
+      className="min-h-screen flex flex-col items-center justify-center px-5 text-center safe-bottom"
+      style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+    >
       <div className={`transition-all duration-700 ${visible ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`}>
-        <div className="text-8xl mb-4">&#127942;</div>
+        <div style={{ fontSize: 96, lineHeight: 1, marginBottom: 16 }}>🏆</div>
       </div>
-      <h1 className="text-4xl font-black text-white mb-2">You did it!</h1>
-      <p className="text-purple-200 font-semibold mb-8">Session complete!</p>
-      <div className="bg-white rounded-3xl p-6 w-full max-w-sm mb-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <span className="font-bold text-gray-600">XP Earned</span>
-          <span className="font-black text-2xl" style={{ color: 'var(--xp)' }}>+{xp}</span>
+
+      <h1 className="font-black text-white mb-2" style={{ fontSize: 'clamp(2rem, 8vw, 2.5rem)' }}>You did it!</h1>
+      <p className="font-semibold mb-8" style={{ color: '#c4b5fd' }}>Session complete!</p>
+
+      <div className="bg-white rounded-3xl p-6 w-full mb-6" style={{ maxWidth: 360 }}>
+        <div className="flex items-center justify-between mb-3">
+          <span className="font-bold text-gray-600 text-lg">XP Earned</span>
+          <span className="font-black text-3xl" style={{ color: 'var(--xp)' }}>+{xp} ⚡</span>
         </div>
         {streak > 0 && (
-          <div className="flex items-center justify-between">
-            <span className="font-bold text-gray-600">Day Streak</span>
-            <span className="font-black text-2xl text-orange-500">{streak} days</span>
+          <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
+            <span className="font-bold text-gray-600 text-lg">Day Streak</span>
+            <span className="font-black text-3xl text-orange-500">🔥 {streak}</span>
           </div>
         )}
       </div>
-      <button onClick={onDone} className="w-full max-w-sm py-4 rounded-2xl font-black text-xl bg-white transition-all active:scale-95" style={{ color: 'var(--primary)' }}>
-        Back to Skills
+
+      <button
+        onClick={onDone}
+        className="w-full bg-white rounded-2xl font-black transition-all active:scale-95"
+        style={{ maxWidth: 360, color: 'var(--primary)', fontSize: '1.25rem', padding: '18px 24px', minHeight: 60 }}
+      >
+        Back to Skills 🚀
       </button>
     </div>
   )
