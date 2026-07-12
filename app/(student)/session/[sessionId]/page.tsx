@@ -15,8 +15,6 @@ export default async function SessionPage({ params, searchParams }: Props) {
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
   if (!q) redirect('/dashboard')
   const questionIds = q.split(',').filter(Boolean)
 
@@ -26,7 +24,7 @@ export default async function SessionPage({ params, searchParams }: Props) {
     .eq('id', sessionId)
     .single()
 
-  if (!session || session.user_id !== user.id) redirect('/dashboard')
+  if (!session || session.user_id !== (user?.id ?? '')) redirect('/dashboard')
   if (session.status === 'completed') redirect('/dashboard')
 
   return (

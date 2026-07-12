@@ -21,12 +21,11 @@ const SKILL_COLORS: Record<string, string> = {
 export default async function Dashboard() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
+  const userId = user?.id ?? ''
   const [{ data: profile }, { data: skills }, { data: streak }] = await Promise.all([
-    supabase.from('users').select('display_name, xp_total').eq('id', user.id).single(),
+    supabase.from('users').select('display_name, xp_total').eq('id', userId).single(),
     supabase.from('skills').select('*').eq('subject', 'math').order('difficulty_order'),
-    supabase.from('streaks').select('*').eq('user_id', user.id).single(),
+    supabase.from('streaks').select('*').eq('user_id', userId).single(),
   ])
 
   const displayName = profile?.display_name ?? 'Friend'
@@ -52,9 +51,6 @@ export default async function Dashboard() {
                 🧊<span>{freezes}</span>
               </div>
             )}
-            <form action="/api/auth/signout" method="POST">
-              <button className="text-xs text-gray-400 font-semibold hover:text-gray-600 shrink-0" style={{ minHeight: 44, padding: '0 4px' }}>out</button>
-            </form>
           </div>
         </div>
       </header>

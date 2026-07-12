@@ -23,15 +23,8 @@ export async function updateSession(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isAuthPage = request.nextUrl.pathname.startsWith('/login')
-  const isPublic = request.nextUrl.pathname === '/'
-
-  if (!user && !isAuthPage && !isPublic) {
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
-
-  if (user && isAuthPage) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+  if (!user) {
+    await supabase.auth.signInAnonymously()
   }
 
   return supabaseResponse
