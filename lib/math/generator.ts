@@ -28,10 +28,25 @@ function buildChoices(correct: string, distractors: string[]): Choice[] {
     if (!seen.has(d)) { seen.add(d); picks.push(d) }
     if (picks.length === 3) break
   }
+
+  // Distractor lists can collide (e.g. two fraction distractors reducing to
+  // the same value). The fallback below tops up the remaining slots — it
+  // must handle every answer shape we produce (plain number, "n/d", "q R r"),
+  // not just plain numbers, or it emits "NaN" as a choice.
+  const fracMatch = correct.match(/^(\d+)\/(\d+)$/)
+  const remMatch = correct.match(/^(\d+) R(\d+)$/)
   let fill = 1
   while (picks.length < 3) {
-    const s = String(Number(correct) + fill++)
-    if (!seen.has(s)) { seen.add(s); picks.push(s) }
+    let candidate: string
+    if (fracMatch) {
+      candidate = `${Number(fracMatch[1]) + fill}/${fracMatch[2]}`
+    } else if (remMatch) {
+      candidate = `${Number(remMatch[1]) + fill} R${remMatch[2]}`
+    } else {
+      candidate = String(Number(correct) + fill)
+    }
+    fill++
+    if (!seen.has(candidate)) { seen.add(candidate); picks.push(candidate) }
   }
   return shuffle([correct, ...picks]).map(v => ({ label: v, value: v }))
 }
@@ -101,7 +116,7 @@ function genDivision(tier: number): GeneratedQuestion {
 // Fractions
 function genFractions(tier: number): GeneratedQuestion {
   if (tier === 1) {
-    const denom = randInt(2, 10)
+    const denom = randInt(3, 10)
     const n1 = randInt(1, denom - 1)
     let n2 = randInt(1, denom - 1)
     while (n2 === n1) n2 = randInt(1, denom - 1)

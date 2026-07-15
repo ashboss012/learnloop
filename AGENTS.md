@@ -14,13 +14,17 @@ PLAN.md — work it in order.
 
 ## What this is
 
-An ADHD-friendly learning app built for one real user first (my
-brother, 4th grade), designed to expand to a small cohort later. He
-doesn't have a content problem, he has a delivery problem: IXL's reward
-structure punishes wrong answers and has no visible finish line;
-Duolingo's shape works. We are building an engagement loop wrapped
-around content we generate and verify. Subjects at launch: Math,
-English, Tamil.
+A "Duolingo for school subjects" practice app for younger kids broadly,
+ADHD-friendly by design rather than ADHD-only. First user is my brother
+(4th grade). He doesn't have a content problem, he has a delivery
+problem: IXL's reward structure punishes wrong answers and has no
+visible finish line; Duolingo's shape works.
+
+The emerging go-to-market is independent tutors and small learning
+centers — validated with real tutors and parents — who need to assign
+practice to students who just need reps, not instruction. This app is
+a rep machine, not a tutoring replacement. A tutor dashboard is a
+FUTURE phase; do not build it now.
 
 ## The non-negotiables (hard rules — never violate)
 
@@ -38,6 +42,19 @@ English, Tamil.
 5. **The correct answer is never sent to the client.** Sessions are
    generated and graded server-side (app/actions/session.ts).
 
+## Never build these
+
+Features that sound helpful but break the core promise. Any agent
+working on this project must refuse to add them unprompted:
+
+- **No timers or countdowns anywhere.** Time pressure is the opposite
+  of the goal.
+- **No hearts, lives, or any mechanic that can lock the user out.**
+- **No score, streak, or XP that can decrease. Ever.**
+- **No leaderboard, adaptive engine, or new subject until its phase.**
+  These each have a doc (06, 08, 03/04) — read the phase gate before
+  touching them.
+
 ## Where the spec lives (docs/)
 
 | Doc | Covers |
@@ -50,7 +67,7 @@ English, Tamil.
 | 05-content-review-pipeline.md | Human review lifecycle |
 | 06-leaderboard.md | Competitive pull (later phase) |
 | 07-data-model.md | Schema — matches supabase/migrations/001_initial.sql |
-| 08-adaptive-engine.md | Difficulty tiers |
+| 08-adaptive-engine.md | Adaptive engine (LATER) — built on real learning science (spaced repetition, retrieval practice, mastery progression), NOT learning styles, which are debunked. |
 | 09-tech-stack-architecture.md | Stack decisions |
 | 10-build-plan.md | Phase order + why — READ BEFORE ADDING FEATURES |
 
@@ -107,6 +124,7 @@ NEXT_PUBLIC_SITE_URL — see SETUP.md for the full setup walkthrough.
 ## Definition of done
 
 - [ ] `npm run build` and `npm run lint` pass clean
+- [ ] `npm test` passes clean
 - [ ] The five non-negotiables above still hold (walk through each one
       against your change)
 - [ ] A wrong answer in your feature path re-queues with an explanation
@@ -114,3 +132,7 @@ NEXT_PUBLIC_SITE_URL — see SETUP.md for the full setup walkthrough.
 - [ ] No correct answer or grading logic reaches the client bundle
 - [ ] The matching doc in docs/ is updated if behavior changed, and
       SETUP.md is updated if setup steps changed
+- [ ] New math skills ship with generator tests proving the computed
+      answer is correct
+- [ ] New features that touch the session loop ship with tests for
+      every non-negotiable they touch
