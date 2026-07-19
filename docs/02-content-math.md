@@ -19,15 +19,22 @@ The valuable asset is the sequencing in my head as a Mathnasium instructor, how 
 
 ## Skill taxonomy
 
-Organize math into a tree of skills so the loop can pull from a specific skill and difficulty. Rough 4th grade shape.
+Organize math into a tree of skills so the loop can pull from a specific skill and difficulty. Implemented shape (lib/math/generator.ts, supabase/migrations/001 + 005):
 
-- Multiplication (single digit, multi digit, word problems)
-- Division (basic, long division, remainders)
-- Fractions (identify, compare, add, subtract)
-- Decimals (place value, compare, add, subtract)
-- Word problems (multi step)
+- Multiplication (single digit, multi digit)
+- Division (basic, remainders)
+- Fractions (compare, add, subtract — like denominators)
+- Decimals (place value, compare, add)
+- Place Value (digit identification, digit value, up to hundred-thousands)
+- Rounding (nearest ten, hundred, thousand)
+- Addition (multi-digit, 2 to 4 digits)
+- Subtraction (multi-digit, 2 to 4 digits)
+- Factors & Multiples (identify a factor, identify a multiple, greatest common factor)
+- Prime & Composite (classify a number)
+- Fraction Multiplication (unit fraction × whole, fraction × whole)
+- Elapsed Time (minutes between two clock times)
 
-Each skill has difficulty tiers driven by parameter ranges and template complexity.
+Each skill has 3 difficulty tiers driven by parameter ranges, seeded per-student from grade (lib/mastery.ts) and stepped adaptively per question (see 08).
 
 ## Question types
 
@@ -45,5 +52,6 @@ Effectively zero. Generation is code. If an LLM is used for phrasing it runs off
 
 ## Not in v1
 
-- Geometry and measurement, add after the core four operations land
+- Multi-step word problems — needs a real template/phrasing engine, not just number-swapping
+- Geometry, measurement (area/perimeter, angles), and line plots — need a rendered diagram, not just text
 - Anything requiring image generation

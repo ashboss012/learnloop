@@ -211,12 +211,247 @@ function genDecimals(tier: number): GeneratedQuestion {
   }
 }
 
+// Place Value
+function genPlaceValue(tier: number): GeneratedQuestion {
+  const digits = tier === 1 ? 3 : tier === 2 ? 5 : 6
+  const num = randInt(Math.pow(10, digits - 1), Math.pow(10, digits) - 1)
+  const places = ['ones', 'tens', 'hundreds', 'thousands', 'ten thousands', 'hundred thousands']
+  const placeValues = [1, 10, 100, 1000, 10000, 100000]
+  const idx = randInt(0, digits - 1)
+  const digit = Math.floor(num / placeValues[idx]) % 10
+  const display = num.toLocaleString('en-US')
+
+  if (tier < 3) {
+    const neighborIdx = idx === digits - 1 ? idx - 1 : idx + 1
+    const neighborDigit = Math.floor(num / placeValues[neighborIdx]) % 10
+    const correct = String(digit)
+    return {
+      prompt: `In ${display}, what digit is in the ${places[idx]} place?`,
+      choices: buildChoices(correct, [String(neighborDigit), String((digit + 1) % 10), String((digit + 9) % 10)]),
+      answer: correct,
+      explanation: `In ${display}, the ${places[idx]} digit is ${digit}.`,
+      type: 'multiple_choice',
+    }
+  }
+
+  const value = digit * placeValues[idx]
+  const correct = String(value)
+  return {
+    prompt: `In ${display}, what is the value of the digit ${digit} in the ${places[idx]} place?`,
+    choices: buildChoices(correct, [String(digit), String(value * 10), String(value + placeValues[idx])]),
+    answer: correct,
+    explanation: `The digit ${digit} is in the ${places[idx]} place, so its value is ${digit} × ${placeValues[idx].toLocaleString('en-US')} = ${value.toLocaleString('en-US')}.`,
+    type: 'multiple_choice',
+  }
+}
+
+// Rounding
+function genRounding(tier: number): GeneratedQuestion {
+  const roundTo = tier === 1 ? 10 : tier === 2 ? 100 : 1000
+  const digits = tier === 1 ? 2 : tier === 2 ? 3 : 4
+  const num = randInt(Math.pow(10, digits - 1), Math.pow(10, digits) - 1)
+  const correct = Math.round(num / roundTo) * roundTo
+  const display = num.toLocaleString('en-US')
+  const label = roundTo === 10 ? 'ten' : roundTo === 100 ? 'hundred' : 'thousand'
+  return {
+    prompt: `Round ${display} to the nearest ${label}.`,
+    choices: buildChoices(String(correct), [
+      String(correct + roundTo), String(correct - roundTo), String(Math.floor(num / roundTo) * roundTo),
+    ]),
+    answer: String(correct),
+    explanation: `${display} rounds to ${correct.toLocaleString('en-US')} (nearest ${label}).`,
+    type: 'multiple_choice',
+  }
+}
+
+// Multi-digit Addition
+function genAddition(tier: number): GeneratedQuestion {
+  const digits = tier === 1 ? 2 : tier === 2 ? 3 : 4
+  const min = Math.pow(10, digits - 1)
+  const max = Math.pow(10, digits) - 1
+  const a = randInt(min, max)
+  const b = randInt(min, max)
+  const correct = a + b
+  return {
+    prompt: `${a.toLocaleString('en-US')} + ${b.toLocaleString('en-US')} = ?`,
+    choices: buildChoices(String(correct), [String(correct + 1), String(correct - 1), String(correct + 10)]),
+    answer: String(correct),
+    explanation: `${a.toLocaleString('en-US')} + ${b.toLocaleString('en-US')} = ${correct.toLocaleString('en-US')}.`,
+    type: 'multiple_choice',
+  }
+}
+
+// Multi-digit Subtraction
+function genSubtraction(tier: number): GeneratedQuestion {
+  const digits = tier === 1 ? 2 : tier === 2 ? 3 : 4
+  const min = Math.pow(10, digits - 1)
+  const max = Math.pow(10, digits) - 1
+  let a = randInt(min, max)
+  let b = randInt(min, max)
+  if (b > a) { const tmp = a; a = b; b = tmp }
+  const correct = a - b
+  return {
+    prompt: `${a.toLocaleString('en-US')} − ${b.toLocaleString('en-US')} = ?`,
+    choices: buildChoices(String(correct), [String(correct + 1), String(correct - 1), String(correct + 10)]),
+    answer: String(correct),
+    explanation: `${a.toLocaleString('en-US')} − ${b.toLocaleString('en-US')} = ${correct.toLocaleString('en-US')}.`,
+    type: 'multiple_choice',
+  }
+}
+
+// Factors & Multiples
+const COMPOSITE_POOL = [12, 14, 15, 16, 18, 20, 21, 22, 24, 25, 26, 27, 28, 30, 32, 33, 34, 35, 36, 38, 39, 40]
+
+function genFactorsMultiples(tier: number): GeneratedQuestion {
+  if (tier === 1) {
+    const n = COMPOSITE_POOL[randInt(0, COMPOSITE_POOL.length - 1)]
+    const factors: number[] = []
+    for (let i = 2; i < n; i++) if (n % i === 0) factors.push(i)
+    const factor = factors[randInt(0, factors.length - 1)]
+    return {
+      prompt: `Which of these numbers is a factor of ${n}?`,
+      choices: buildChoices(String(factor), [String(n - 1), String(factor * 2), String(factor + n)]),
+      answer: String(factor),
+      explanation: `${n} ÷ ${factor} = ${n / factor}, so ${factor} is a factor of ${n}.`,
+      type: 'multiple_choice',
+    }
+  }
+  if (tier === 2) {
+    const n = randInt(3, 12)
+    const k = randInt(3, 9)
+    const multiple = n * k
+    return {
+      prompt: `Which of these numbers is a multiple of ${n}?`,
+      choices: buildChoices(String(multiple), [String(multiple + 1), String(multiple - 1), String(multiple + 2)]),
+      answer: String(multiple),
+      explanation: `${n} × ${k} = ${multiple}, so ${multiple} is a multiple of ${n}.`,
+      type: 'multiple_choice',
+    }
+  }
+  const a = randInt(8, 24)
+  const b = randInt(8, 24)
+  const correct = gcd(a, b)
+  return {
+    prompt: `What is the greatest common factor of ${a} and ${b}?`,
+    choices: buildChoices(String(correct), [String(Math.min(a, b)), String(correct * 2), String(Math.max(1, correct - 1))]),
+    answer: String(correct),
+    explanation: `The greatest common factor of ${a} and ${b} is ${correct}.`,
+    type: 'multiple_choice',
+  }
+}
+
+// Prime vs Composite
+function isPrime(n: number): boolean {
+  if (n < 2) return false
+  for (let i = 2; i * i <= n; i++) if (n % i === 0) return false
+  return true
+}
+
+function genPrimeComposite(tier: number): GeneratedQuestion {
+  const max = tier === 1 ? 20 : tier === 2 ? 50 : 100
+  const askPrime = Math.random() < 0.5
+  const primes: number[] = []
+  const composites: number[] = []
+  for (let i = 2; i <= max; i++) (isPrime(i) ? primes : composites).push(i)
+
+  const targetPool = askPrime ? primes : composites
+  const otherPool = askPrime ? composites : primes
+  const target = targetPool[randInt(0, targetPool.length - 1)]
+  const others = shuffle(otherPool).slice(0, 3)
+
+  return {
+    prompt: `Which of these numbers is ${askPrime ? 'prime' : 'composite'}?`,
+    choices: buildChoices(String(target), others.map(String)),
+    answer: String(target),
+    explanation: askPrime
+      ? `${target} is prime — its only factors are 1 and itself.`
+      : `${target} is composite — it has factors besides 1 and itself.`,
+    type: 'multiple_choice',
+  }
+}
+
+// Multiplying by a Fraction
+function genFractionMultiplication(tier: number): GeneratedQuestion {
+  if (tier === 1) {
+    const denom = randInt(2, 8)
+    const whole = denom * randInt(1, 6)
+    const correct = whole / denom
+    return {
+      prompt: `1/${denom} × ${whole} = ?`,
+      choices: buildChoices(String(correct), [String(correct + 1), String(correct - 1), String(whole)]),
+      answer: String(correct),
+      explanation: `1/${denom} of ${whole} is ${whole} ÷ ${denom} = ${correct}.`,
+      type: 'multiple_choice',
+    }
+  }
+  if (tier === 2) {
+    const denom = randInt(3, 8)
+    const num = randInt(2, denom - 1)
+    const whole = denom * randInt(1, 5)
+    const rawProduct = num * whole
+    const correct = rawProduct / denom
+    return {
+      prompt: `${num}/${denom} × ${whole} = ?`,
+      choices: buildChoices(String(correct), [String(correct + denom), String(correct - denom), String(num * whole)]),
+      answer: String(correct),
+      explanation: `${num}/${denom} × ${whole} = (${num} × ${whole}) ÷ ${denom} = ${correct}.`,
+      type: 'multiple_choice',
+    }
+  }
+  const denom = randInt(3, 8)
+  const num = randInt(2, denom - 1)
+  const whole = randInt(2, 9)
+  const rawN = num * whole
+  const [sn, sd] = simplify(rawN, denom)
+  const correct = frac(sn, sd)
+  return {
+    prompt: `${num}/${denom} × ${whole} = ?`,
+    choices: buildChoices(correct, [frac(rawN, denom), frac(rawN + 1, denom), frac(whole, denom)]),
+    answer: correct,
+    explanation: `${num}/${denom} × ${whole} = ${rawN}/${denom}${correct !== frac(rawN, denom) ? ` = ${correct}` : ''}.`,
+    type: 'multiple_choice',
+  }
+}
+
+// Elapsed Time
+function formatTime(totalMinutes: number): string {
+  const h24 = Math.floor(totalMinutes / 60) % 24
+  const m = totalMinutes % 60
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12
+  const period = h24 < 12 ? 'AM' : 'PM'
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`
+}
+
+function genElapsedTime(tier: number): GeneratedQuestion {
+  const startMinutes = tier === 1 ? randInt(6, 20) * 60 : randInt(6 * 60, 20 * 60 + 45)
+  const elapsed = tier === 1 ? randInt(1, 5) * 60 : tier === 2 ? randInt(1, 8) * 15 : randInt(15, 195)
+  const endMinutes = startMinutes + elapsed
+  const start = formatTime(startMinutes)
+  const end = formatTime(endMinutes)
+
+  return {
+    prompt: `It's ${start}. How many minutes until ${end}?`,
+    choices: buildChoices(String(elapsed), [String(elapsed + 15), String(elapsed - 15), String(elapsed + 60)]),
+    answer: String(elapsed),
+    explanation: `From ${start} to ${end} is ${elapsed} minutes${elapsed >= 60 ? ` (${Math.floor(elapsed / 60)} hr ${elapsed % 60} min)` : ''}.`,
+    type: 'multiple_choice',
+  }
+}
+
 export function generateQuestion(slug: string, tier: number): GeneratedQuestion {
   switch (slug) {
-    case 'math-multiplication': return genMultiplication(tier)
-    case 'math-division':       return genDivision(tier)
-    case 'math-fractions':      return genFractions(tier)
-    case 'math-decimals':       return genDecimals(tier)
-    default:                    return genMultiplication(tier)
+    case 'math-multiplication':          return genMultiplication(tier)
+    case 'math-division':                return genDivision(tier)
+    case 'math-fractions':               return genFractions(tier)
+    case 'math-decimals':                return genDecimals(tier)
+    case 'math-place-value':             return genPlaceValue(tier)
+    case 'math-rounding':                return genRounding(tier)
+    case 'math-addition':                return genAddition(tier)
+    case 'math-subtraction':             return genSubtraction(tier)
+    case 'math-factors-multiples':       return genFactorsMultiples(tier)
+    case 'math-prime-composite':         return genPrimeComposite(tier)
+    case 'math-fraction-multiplication': return genFractionMultiplication(tier)
+    case 'math-elapsed-time':            return genElapsedTime(tier)
+    default:                             return genMultiplication(tier)
   }
 }

@@ -260,3 +260,242 @@ describe('genDecimals', () => {
     }
   })
 })
+
+// ── Place Value ───────────────────────────────────────────────────────────────
+
+describe('genPlaceValue', () => {
+  const PLACES = ['ones', 'tens', 'hundreds', 'thousands', 'ten thousands', 'hundred thousands']
+  const PLACE_VALUES = [1, 10, 100, 1000, 10000, 100000]
+
+  for (const tier of [1, 2] as const) {
+    test(`tier ${tier}: ${SAMPLES} samples — digit identified correctly`, () => {
+      const questions = times(SAMPLES, () => generateQuestion('math-place-value', tier))
+      for (const q of questions) {
+        const match = q.prompt.match(/In ([\d,]+), what digit is in the ([a-z ]+) place\?/)
+        expect(match, 'prompt format mismatch').toBeTruthy()
+        const num = parseInt(match![1].replace(/,/g, ''))
+        const place = match![2]
+        const idx = PLACES.indexOf(place)
+        expect(idx, `unknown place name "${place}"`).toBeGreaterThanOrEqual(0)
+        const expectedDigit = String(Math.floor(num / PLACE_VALUES[idx]) % 10)
+        expect(q.answer, `digit in ${place} of ${num}`).toBe(expectedDigit)
+        assertChoiceInvariants(q, `placevalue t${tier} ${num} ${place}`)
+      }
+    })
+  }
+
+  test(`tier 3: ${SAMPLES} samples — digit value identified correctly`, () => {
+    const questions = times(SAMPLES, () => generateQuestion('math-place-value', 3))
+    for (const q of questions) {
+      const match = q.prompt.match(/In ([\d,]+), what is the value of the digit (\d) in the ([a-z ]+) place\?/)
+      expect(match, 'prompt format mismatch').toBeTruthy()
+      const num = parseInt(match![1].replace(/,/g, ''))
+      const digit = parseInt(match![2])
+      const place = match![3]
+      const idx = PLACES.indexOf(place)
+      expect(idx, `unknown place name "${place}"`).toBeGreaterThanOrEqual(0)
+      expect(Math.floor(num / PLACE_VALUES[idx]) % 10, 'digit mismatch').toBe(digit)
+      const expectedValue = digit * PLACE_VALUES[idx]
+      expect(q.answer, `value of digit ${digit} in ${place} of ${num}`).toBe(String(expectedValue))
+      assertChoiceInvariants(q, `placevalue t3 ${num} ${place}`)
+    }
+  })
+})
+
+// ── Rounding ──────────────────────────────────────────────────────────────────
+
+describe('genRounding', () => {
+  const ROUND_TO = { 1: 10, 2: 100, 3: 1000 } as const
+
+  for (const tier of [1, 2, 3] as const) {
+    test(`tier ${tier}: ${SAMPLES} samples — rounds correctly`, () => {
+      const questions = times(SAMPLES, () => generateQuestion('math-rounding', tier))
+      for (const q of questions) {
+        const match = q.prompt.match(/Round ([\d,]+) to the nearest (ten|hundred|thousand)\./)
+        expect(match, 'prompt format mismatch').toBeTruthy()
+        const num = parseInt(match![1].replace(/,/g, ''))
+        const roundTo = ROUND_TO[tier]
+        const expected = Math.round(num / roundTo) * roundTo
+        expect(parseInt(q.answer), `round ${num} to nearest ${roundTo}`).toBe(expected)
+        assertChoiceInvariants(q, `rounding t${tier} ${num}`)
+      }
+    })
+  }
+})
+
+// ── Addition ──────────────────────────────────────────────────────────────────
+
+describe('genAddition', () => {
+  for (const tier of [1, 2, 3] as const) {
+    test(`tier ${tier}: ${SAMPLES} samples all correct`, () => {
+      const questions = times(SAMPLES, () => generateQuestion('math-addition', tier))
+      const digits = tier === 1 ? 2 : tier === 2 ? 3 : 4
+      for (const q of questions) {
+        const match = q.prompt.match(/([\d,]+) \+ ([\d,]+) = \?/)
+        expect(match, 'prompt format mismatch').toBeTruthy()
+        const a = parseInt(match![1].replace(/,/g, '')), b = parseInt(match![2].replace(/,/g, ''))
+        expect(parseInt(q.answer), `${a}+${b} answer wrong`).toBe(a + b)
+        expect(String(a).length, 'operand a wrong digit count').toBe(digits)
+        expect(String(b).length, 'operand b wrong digit count').toBe(digits)
+        assertChoiceInvariants(q, `addition t${tier} ${a}+${b}`)
+      }
+    })
+  }
+})
+
+// ── Subtraction ───────────────────────────────────────────────────────────────
+
+describe('genSubtraction', () => {
+  for (const tier of [1, 2, 3] as const) {
+    test(`tier ${tier}: ${SAMPLES} samples all correct, never negative`, () => {
+      const questions = times(SAMPLES, () => generateQuestion('math-subtraction', tier))
+      const digits = tier === 1 ? 2 : tier === 2 ? 3 : 4
+      for (const q of questions) {
+        const match = q.prompt.match(/([\d,]+) − ([\d,]+) = \?/)
+        expect(match, 'prompt format mismatch').toBeTruthy()
+        const a = parseInt(match![1].replace(/,/g, '')), b = parseInt(match![2].replace(/,/g, ''))
+        expect(a, 'minuend must be >= subtrahend').toBeGreaterThanOrEqual(b)
+        expect(parseInt(q.answer), `${a}-${b} answer wrong`).toBe(a - b)
+        expect(String(a).length, 'operand a wrong digit count').toBe(digits)
+        assertChoiceInvariants(q, `subtraction t${tier} ${a}-${b}`)
+      }
+    })
+  }
+})
+
+// ── Factors & Multiples ──────────────────────────────────────────────────────
+
+describe('genFactorsMultiples', () => {
+  test(`tier 1: ${SAMPLES} samples — answer is a genuine factor`, () => {
+    const questions = times(SAMPLES, () => generateQuestion('math-factors-multiples', 1))
+    for (const q of questions) {
+      const match = q.prompt.match(/Which of these numbers is a factor of (\d+)\?/)
+      expect(match, 'prompt format mismatch').toBeTruthy()
+      const n = parseInt(match![1])
+      const factor = parseInt(q.answer)
+      expect(n % factor, `${factor} is not a factor of ${n}`).toBe(0)
+      expect(factor, 'factor must be > 1').toBeGreaterThan(1)
+      expect(factor, 'factor must be < n').toBeLessThan(n)
+      assertChoiceInvariants(q, `factors t1 ${n}`)
+    }
+  })
+
+  test(`tier 2: ${SAMPLES} samples — answer is a genuine multiple`, () => {
+    const questions = times(SAMPLES, () => generateQuestion('math-factors-multiples', 2))
+    for (const q of questions) {
+      const match = q.prompt.match(/Which of these numbers is a multiple of (\d+)\?/)
+      expect(match, 'prompt format mismatch').toBeTruthy()
+      const n = parseInt(match![1])
+      const multiple = parseInt(q.answer)
+      expect(multiple % n, `${multiple} is not a multiple of ${n}`).toBe(0)
+      assertChoiceInvariants(q, `factors t2 ${n}`)
+    }
+  })
+
+  test(`tier 3: ${SAMPLES} samples — greatest common factor correct`, () => {
+    const questions = times(SAMPLES, () => generateQuestion('math-factors-multiples', 3))
+    for (const q of questions) {
+      const match = q.prompt.match(/What is the greatest common factor of (\d+) and (\d+)\?/)
+      expect(match, 'prompt format mismatch').toBeTruthy()
+      const a = parseInt(match![1]), b = parseInt(match![2])
+      expect(parseInt(q.answer), `gcf(${a},${b}) wrong`).toBe(gcd(a, b))
+      assertChoiceInvariants(q, `factors t3 gcf(${a},${b})`)
+    }
+  })
+})
+
+// ── Prime vs Composite ───────────────────────────────────────────────────────
+
+describe('genPrimeComposite', () => {
+  function isPrimeCheck(n: number): boolean {
+    if (n < 2) return false
+    for (let i = 2; i * i <= n; i++) if (n % i === 0) return false
+    return true
+  }
+
+  for (const tier of [1, 2, 3] as const) {
+    test(`tier ${tier}: ${SAMPLES} samples — classification correct`, () => {
+      const questions = times(SAMPLES, () => generateQuestion('math-prime-composite', tier))
+      for (const q of questions) {
+        const match = q.prompt.match(/Which of these numbers is (prime|composite)\?/)
+        expect(match, 'prompt format mismatch').toBeTruthy()
+        const askPrime = match![1] === 'prime'
+        const target = parseInt(q.answer)
+        expect(isPrimeCheck(target), `${target} primality mismatch for "${match![1]}"`).toBe(askPrime)
+        assertChoiceInvariants(q, `primecomposite t${tier} ${target}`)
+      }
+    })
+  }
+})
+
+// ── Multiplying by a Fraction ────────────────────────────────────────────────
+
+describe('genFractionMultiplication', () => {
+  test(`tier 1: ${SAMPLES} samples — unit fraction times whole number`, () => {
+    const questions = times(SAMPLES, () => generateQuestion('math-fraction-multiplication', 1))
+    for (const q of questions) {
+      const match = q.prompt.match(/1\/(\d+) × (\d+) = \?/)
+      expect(match, 'prompt format mismatch').toBeTruthy()
+      const denom = parseInt(match![1]), whole = parseInt(match![2])
+      expect(whole % denom, `${whole} not divisible by ${denom}`).toBe(0)
+      expect(parseInt(q.answer), `1/${denom} × ${whole} wrong`).toBe(whole / denom)
+      assertChoiceInvariants(q, `fracmult t1 1/${denom}×${whole}`)
+    }
+  })
+
+  test(`tier 2: ${SAMPLES} samples — non-unit fraction times whole number, whole result`, () => {
+    const questions = times(SAMPLES, () => generateQuestion('math-fraction-multiplication', 2))
+    for (const q of questions) {
+      const match = q.prompt.match(/(\d+)\/(\d+) × (\d+) = \?/)
+      expect(match, 'prompt format mismatch').toBeTruthy()
+      const num = parseInt(match![1]), denom = parseInt(match![2]), whole = parseInt(match![3])
+      expect((num * whole) % denom, `${num}×${whole} not divisible by ${denom}`).toBe(0)
+      expect(parseInt(q.answer), `${num}/${denom} × ${whole} wrong`).toBe((num * whole) / denom)
+      assertChoiceInvariants(q, `fracmult t2 ${num}/${denom}×${whole}`)
+    }
+  })
+
+  test(`tier 3: ${SAMPLES} samples — fraction result correct and simplified`, () => {
+    const questions = times(SAMPLES, () => generateQuestion('math-fraction-multiplication', 3))
+    for (const q of questions) {
+      const match = q.prompt.match(/(\d+)\/(\d+) × (\d+) = \?/)
+      expect(match, 'prompt format mismatch').toBeTruthy()
+      const num = parseInt(match![1]), denom = parseInt(match![2]), whole = parseInt(match![3])
+      const rawN = num * whole
+      const [sn, sd] = simplifyFrac(rawN, denom)
+      const expected = fracStr(sn, sd)
+      expect(q.answer, `${num}/${denom} × ${whole} wrong`).toBe(expected)
+      assertChoiceInvariants(q, `fracmult t3 ${num}/${denom}×${whole}`)
+    }
+  })
+})
+
+// ── Elapsed Time ──────────────────────────────────────────────────────────────
+
+describe('genElapsedTime', () => {
+  function parseClock(s: string): number {
+    const m = s.match(/(\d+):(\d+) (AM|PM)/)
+    if (!m) throw new Error(`bad time string: ${s}`)
+    let h = parseInt(m[1]) % 12
+    if (m[3] === 'PM') h += 12
+    return h * 60 + parseInt(m[2])
+  }
+
+  for (const tier of [1, 2, 3] as const) {
+    test(`tier ${tier}: ${SAMPLES} samples — elapsed minutes correct`, () => {
+      const questions = times(SAMPLES, () => generateQuestion('math-elapsed-time', tier))
+      for (const q of questions) {
+        const match = q.prompt.match(/It's (\d+:\d+ (?:AM|PM))\. How many minutes until (\d+:\d+ (?:AM|PM))\?/)
+        expect(match, 'prompt format mismatch').toBeTruthy()
+        const startMin = parseClock(match![1])
+        const endMin = parseClock(match![2])
+        const elapsed = parseInt(q.answer)
+        // handle possible day wraparound (end time earlier in the day than start)
+        const wrapped = endMin >= startMin ? endMin - startMin : endMin + 1440 - startMin
+        expect(wrapped, `elapsed time mismatch for ${match![1]} -> ${match![2]}`).toBe(elapsed)
+        expect(elapsed, 'elapsed must be positive').toBeGreaterThan(0)
+        assertChoiceInvariants(q, `elapsedtime t${tier} ${match![1]}->${match![2]}`)
+      }
+    })
+  }
+})

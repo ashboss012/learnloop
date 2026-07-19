@@ -1,0 +1,29 @@
+export const SKILL_ICONS: Record<string, string> = {
+  'math-multiplication': '✖️',
+  'math-division': '➗',
+  'math-fractions': '½',
+  'math-decimals': '·',
+  'math-place-value': '🔢',
+  'math-rounding': '🎯',
+  'math-addition': '➕',
+  'math-subtraction': '➖',
+  'math-factors-multiples': '🧩',
+  'math-prime-composite': '🔍',
+  'math-fraction-multiplication': '🍕',
+  'math-elapsed-time': '⏱️',
+}
+
+export const SKILL_COLORS: Record<string, string> = {
+  'math-multiplication': '#6c63ff',
+  'math-division': '#f59e0b',
+  'math-fractions': '#22c55e',
+  'math-decimals': '#ef4444',
+  'math-place-value': '#0ea5e9',
+  'math-rounding': '#14b8a6',
+  'math-addition': '#8b5cf6',
+  'math-subtraction': '#ec4899',
+  'math-factors-multiples': '#eab308',
+  'math-prime-composite': '#06b6d4',
+  'math-fraction-multiplication': '#84cc16',
+  'math-elapsed-time': '#d946ef',
+}

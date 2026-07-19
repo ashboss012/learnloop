@@ -76,6 +76,16 @@ Per-question results inside a session. Feeds future adaptivity.
 | was_correct | First-attempt correctness |
 | attempts | How many tries |
 
+### user_skill_progress
+Adaptive engine, first slice (see 08). Current tier per student per skill, stepped +-1 after each primary-pass question based on first-attempt correctness. Seeded from grade on first use (lib/mastery.ts). Implemented in supabase/migrations/004_user_skill_progress.sql.
+
+| Column | Notes |
+|--------|-------|
+| user_id | |
+| skill_id | |
+| tier | 1-3 |
+| updated_at | |
+
 ### streaks
 Daily streak state per user. Could also be derived from sessions, but a stored counter is simpler.
 

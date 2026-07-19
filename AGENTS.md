@@ -51,9 +51,12 @@ working on this project must refuse to add them unprompted:
   of the goal.
 - **No hearts, lives, or any mechanic that can lock the user out.**
 - **No score, streak, or XP that can decrease. Ever.**
-- **No leaderboard, adaptive engine, or new subject until its phase.**
-  These each have a doc (06, 08, 03/04) — read the phase gate before
-  touching them.
+- **No leaderboard or new subject until its phase.** These each have a
+  doc (06, 03/04) — read the phase gate before touching them.
+- **Do not extend the adaptive engine past its shipped first slice**
+  (grade-seeded starting tier, +-1 stepping per primary-pass question)
+  without re-reading doc 08 — no spaced-repetition scheduling, no
+  interleaving, no finer-grained difficulty yet.
 
 ## Where the spec lives (docs/)
 
@@ -92,17 +95,32 @@ of the current phase without being asked.
   set manually in the Supabase table editor
 - Route groups: app/(auth)/login, app/(student)/dashboard|session
   (no /skills page exists — skills render on the dashboard)
-- 8-question sessions generated server-side; grading in
-  app/actions/session.ts (startSession, getQuestion, gradeAnswer,
+- 8-question sessions, generated one question at a time server-side as
+  the student progresses; grading in app/actions/session.ts
+  (startSession, getSessionForRunner, getNextQuestion, gradeAnswer,
   completeSession, getSessionProgress)
-- Engagement loop: forward-only progress, wrong → explanation +
-  re-queue, must clear every question to finish
+- Engagement loop: forward-only progress, wrong → explanation, no
+  immediate retry — a missed question is deferred to a "missed
+  questions" review round at the end of the session and must be
+  answered correctly there to finish
+- Adaptive difficulty (first slice, see 08): each skill has a
+  per-student tier (1-3) in user_skill_progress, seeded from grade
+  (lib/mastery.ts) and stepped +-1 after every primary-pass question
+  based on first-attempt correctness. The missed-questions review does
+  not step the tier — it re-serves the same question at its original
+  difficulty until answered correctly
 - XP (+50 per completed session, +5 per first-attempt correct) and
   daily streak with 2 freeze credits
-- Math skills: multiplication, division, fractions, decimals — three
+- Math skills (12): multiplication, division, fractions, decimals,
+  place value, rounding, addition, subtraction, factors & multiples,
+  prime & composite, fraction multiplication, elapsed time — three
   tiers each; distractors modeled on real error patterns (off-by-one,
-  wrong operation, place-value slips)
+  wrong operation, place-value slips). Multi-step word problems and
+  anything needing a diagram (geometry, line plots) are explicitly
+  out of scope — see docs/02-content-math.md "Not in v1"
 - Schema + RLS + skill seed in supabase/migrations/001_initial.sql
+  (+ 005_more_math_skills.sql for the later 8);
+  adaptive engine schema in 004_user_skill_progress.sql
 
 ## Environment
 
@@ -127,8 +145,9 @@ NEXT_PUBLIC_SITE_URL — see SETUP.md for the full setup walkthrough.
 - [ ] `npm test` passes clean
 - [ ] The five non-negotiables above still hold (walk through each one
       against your change)
-- [ ] A wrong answer in your feature path re-queues with an explanation
-      and never moves progress backward
+- [ ] A wrong answer in your feature path shows an explanation, defers
+      to the missed-questions review round, and never moves progress
+      backward
 - [ ] No correct answer or grading logic reaches the client bundle
 - [ ] The matching doc in docs/ is updated if behavior changed, and
       SETUP.md is updated if setup steps changed

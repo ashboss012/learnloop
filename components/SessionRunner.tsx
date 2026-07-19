@@ -1,13 +1,15 @@
-﻿'use client'
+'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { getQuestion, gradeAnswer, completeSession } from '@/app/actions/session'
+import { gradeAnswer, getNextQuestion, completeSession } from '@/app/actions/session'
+import Mascot from '@/components/Mascot'
 
 interface Choice { label: string; value: string }
 interface Question { id: string; prompt: string; choices: Choice[] | null; difficulty: number; position: number }
+interface MissedItem { question: Question; nextAttempt: number }
 
-type Phase = 'loading' | 'question' | 'feedback' | 'complete'
+type Phase = 'question' | 'feedback' | 'loading' | 'complete'
 
 interface FeedbackState {
   correct: boolean
@@ -18,84 +20,118 @@ interface FeedbackState {
 
 interface Props {
   sessionId: string
-  questionIds: string[]
   skillName: string
+  totalQuestions: number
+  initialQuestion: Question
 }
 
-export default function SessionRunner({ sessionId, questionIds, skillName }: Props) {
+export default function SessionRunner({ sessionId, skillName, totalQuestions, initialQuestion }: Props) {
   const router = useRouter()
-  const totalUnique = questionIds.length
 
-  const [queue, setQueue] = useState<string[]>([...questionIds])
-  const [firstAttempt, setFirstAttempt] = useState<Record<string, boolean | null>>({})
-  const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
-  const [phase, setPhase] = useState<Phase>('loading')
-  const [question, setQuestion] = useState<Question | null>(null)
+  const [question, setQuestion] = useState<Question>(initialQuestion)
+  const [primaryPosition, setPrimaryPosition] = useState(initialQuestion.position)
+  const [reviewing, setReviewing] = useState(false)
+  const [missedQueue, setMissedQueue] = useState<MissedItem[]>([])
+  const [currentAttempt, setCurrentAttempt] = useState(1)
+  const [firstAttemptCorrectCount, setFirstAttemptCorrectCount] = useState(0)
+
+  const [phase, setPhase] = useState<Phase>('question')
   const [selected, setSelected] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<FeedbackState | null>(null)
   const [completionData, setCompletionData] = useState<{ xp: number; streak: number } | null>(null)
 
-  const currentQId = queue[0] ?? null
-
-  const loadQuestion = useCallback(async (qId: string) => {
-    setPhase('loading')
-    setSelected(null)
-    setFeedback(null)
-    const res = await getQuestion(qId)
-    if ('error' in res || !res.question) { router.push('/dashboard'); return }
-    setQuestion(res.question as Question)
-    setPhase('question')
-  }, [router])
-
-  useEffect(() => {
-    if (currentQId) loadQuestion(currentQId)
-  }, [currentQId, loadQuestion])
-
   async function handleChoice(value: string) {
-    if (phase !== 'question' || !question || selected) return
+    if (phase !== 'question' || selected) return
     setSelected(value)
-    const qId = question.id
-    const isFirstAttempt = firstAttempt[qId] === undefined
-    const attempt = isFirstAttempt ? 1 : 2
-    const res = await gradeAnswer(sessionId, qId, value, attempt)
+    const attempt = reviewing ? currentAttempt : 1
+    const res = await gradeAnswer(sessionId, question.id, value, attempt)
     if ('error' in res) return
-    if (isFirstAttempt) setFirstAttempt(prev => ({ ...prev, [qId]: res.correct }))
+    if (attempt === 1 && res.correct) setFirstAttemptCorrectCount(c => c + 1)
     setFeedback({ correct: res.correct, correctAnswer: res.correctAnswer, explanation: res.explanation, chosen: value })
     setPhase('feedback')
-    if (res.correct) setCompletedIds(prev => new Set([...prev, qId]))
+  }
+
+  async function finishSession() {
+    const res = await completeSession(sessionId)
+    setCompletionData({
+      xp: 50 + firstAttemptCorrectCount * 5,
+      streak: (res && typeof res === 'object' && 'streak' in res && typeof res.streak === 'number') ? res.streak : 0,
+    })
+    setPhase('complete')
+  }
+
+  async function advanceFromReview(justAnsweredCorrect: boolean, justAnsweredQuestion: Question) {
+    const nextMissed = justAnsweredCorrect
+      ? missedQueue
+      : [...missedQueue, { question: justAnsweredQuestion, nextAttempt: currentAttempt + 1 }]
+
+    if (nextMissed.length === 0) {
+      await finishSession()
+      return
+    }
+
+    const [next, ...rest] = nextMissed
+    setMissedQueue(rest)
+    setCurrentAttempt(next.nextAttempt)
+    setQuestion(next.question)
+    setSelected(null)
+    setFeedback(null)
+    setPhase('question')
   }
 
   async function handleContinue() {
-    if (!question) return
-    const qId = question.id
-    const remaining = queue.slice(1)
-    if (!feedback?.correct) remaining.push(qId)
-    const newCompleted = feedback?.correct ? new Set([...completedIds, qId]) : completedIds
-    if (newCompleted.size >= totalUnique && feedback?.correct) {
-      const res = await completeSession(sessionId)
-      const firstCorrectCount = Object.values(firstAttempt).filter(v => v === true).length
-      setCompletionData({
-        xp: 50 + firstCorrectCount * 5,
-        streak: (res && typeof res === 'object' && 'streak' in res && typeof res.streak === 'number') ? res.streak : 0,
-      })
-      setPhase('complete')
+    if (!feedback) return
+
+    if (reviewing) {
+      await advanceFromReview(feedback.correct, question)
       return
     }
-    setQueue(remaining)
+
+    // Primary pass: never retry immediately - a miss goes to the review queue.
+    const updatedMissed = feedback.correct ? missedQueue : [...missedQueue, { question, nextAttempt: 2 }]
+    if (!feedback.correct) setMissedQueue(updatedMissed)
+
+    const isLastPrimary = primaryPosition >= totalQuestions - 1
+    if (!isLastPrimary) {
+      setPhase('loading')
+      const res = await getNextQuestion(sessionId, question.id)
+      if ('error' in res) { router.push('/dashboard'); return }
+      setQuestion(res.question as Question)
+      setPrimaryPosition(res.question.position)
+      setSelected(null)
+      setFeedback(null)
+      setPhase('question')
+      return
+    }
+
+    // Last primary question just answered - transition to review or finish.
+    if (updatedMissed.length === 0) {
+      await finishSession()
+      return
+    }
+    const [first, ...rest] = updatedMissed
+    setReviewing(true)
+    setMissedQueue(rest)
+    setCurrentAttempt(first.nextAttempt)
+    setQuestion(first.question)
+    setSelected(null)
+    setFeedback(null)
+    setPhase('question')
   }
 
-  const progressPct = Math.round((completedIds.size / totalUnique) * 100)
+  const progressPct = Math.round(((primaryPosition + (reviewing || phase === 'complete' ? 1 : 0)) / totalQuestions) * 100)
 
   if (phase === 'complete' && completionData) {
     return <CompletionScreen xp={completionData.xp} streak={completionData.streak} onDone={() => router.push('/dashboard')} />
   }
 
+  const isLastPrimary = !reviewing && primaryPosition >= totalQuestions - 1
+
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
+    <div className="min-h-screen flex flex-col bg-blobs">
       {/* Top bar — sticky, safe-area aware */}
       <div className="safe-top sticky top-0 z-10 bg-white border-b-2" style={{ borderColor: 'var(--border)' }}>
         <div className="max-w-lg mx-auto flex items-center gap-3 px-4 py-3">
-          {/* Close button — 44×44 tap target */}
           <button
             onClick={() => router.push('/dashboard')}
             aria-label="Exit session"
@@ -104,7 +140,6 @@ export default function SessionRunner({ sessionId, questionIds, skillName }: Pro
           >
             ✕
           </button>
-          {/* Progress bar */}
           <div className="flex-1 bg-gray-200 rounded-full overflow-hidden" style={{ height: 12 }}>
             <div
               className="h-full rounded-full transition-all duration-500"
@@ -112,15 +147,29 @@ export default function SessionRunner({ sessionId, questionIds, skillName }: Pro
             />
           </div>
           <span className="text-sm font-black tabular-nums" style={{ color: 'var(--muted)', minWidth: '3.5rem', textAlign: 'right' }}>
-            {completedIds.size}/{totalUnique}
+            {Math.min(primaryPosition + 1, totalQuestions)}/{totalQuestions}
           </span>
         </div>
       </div>
 
       {/* Skill label */}
-      <div className="max-w-lg mx-auto w-full px-5 pt-5 pb-2">
+      <div className="max-w-lg mx-auto w-full px-5 pt-5 pb-2 flex items-center gap-2">
         <span className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{skillName}</span>
+        <span
+          className="text-xs font-black rounded-full px-2 py-0.5"
+          style={{ background: 'rgba(108,99,255,0.13)', color: 'var(--primary)' }}
+        >
+          Lv {question.difficulty}
+        </span>
       </div>
+
+      {reviewing && (
+        <div className="max-w-lg mx-auto w-full px-5 pb-2">
+          <span className="text-xs font-black rounded-full px-3 py-1 inline-block" style={{ background: '#fef3c7', color: '#92400e' }}>
+            🔁 Missed questions — {missedQueue.length + 1} to clear
+          </span>
+        </div>
+      )}
 
       {/* Main content */}
       <div className="flex-1 max-w-lg mx-auto w-full px-4 flex flex-col" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
@@ -134,7 +183,6 @@ export default function SessionRunner({ sessionId, questionIds, skillName }: Pro
 
         {(phase === 'question' || phase === 'feedback') && question && (
           <>
-            {/* Question card */}
             <div
               className="rounded-3xl p-6 mb-5 font-black leading-snug"
               style={{ background: 'white', border: '2px solid var(--border)', fontSize: 'clamp(1.25rem, 5vw, 1.75rem)', minHeight: 110 }}
@@ -142,7 +190,6 @@ export default function SessionRunner({ sessionId, questionIds, skillName }: Pro
               {question.prompt}
             </div>
 
-            {/* Choice buttons */}
             <div className="space-y-3 flex-1">
               {question.choices?.map(choice => {
                 let bg = 'white', border = 'var(--border)', textColor = 'var(--text)'
@@ -172,12 +219,14 @@ export default function SessionRunner({ sessionId, questionIds, skillName }: Pro
               })}
             </div>
 
-            {/* Feedback panel */}
             {phase === 'feedback' && feedback && (
               <div className="mt-5">
                 <div
                   className="rounded-3xl p-5 mb-4"
-                  style={{ background: feedback.correct ? '#dcfce7' : '#fee2e2' }}
+                  style={{
+                    background: feedback.correct ? '#dcfce7' : '#fee2e2',
+                    animation: feedback.correct ? 'pop 0.4s ease-out' : 'shake 0.4s ease-in-out',
+                  }}
                 >
                   <p className="font-black text-xl mb-1" style={{ color: feedback.correct ? '#166534' : '#991b1b' }}>
                     {feedback.correct ? '✅ Correct!' : '❌ Not quite!'}
@@ -189,15 +238,23 @@ export default function SessionRunner({ sessionId, questionIds, skillName }: Pro
                   )}
                   <p className="text-sm font-semibold mt-2 text-gray-700 leading-relaxed">{feedback.explanation}</p>
                   {!feedback.correct && (
-                    <p className="text-sm font-bold mt-2 text-orange-600">{"You'll see this one again — keep going! 💪"}</p>
+                    <p className="text-sm font-bold mt-2 text-orange-600">
+                      {reviewing ? "You'll see this one again soon — keep going! 💪" : "No worries — we'll come back to this one at the end! 💪"}
+                    </p>
                   )}
                 </div>
+                <style>{`
+                  @keyframes pop { 0% { transform: scale(0.9); opacity: 0; } 60% { transform: scale(1.03); opacity: 1; } 100% { transform: scale(1); } }
+                  @keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+                `}</style>
                 <button
                   onClick={handleContinue}
                   className="w-full rounded-2xl font-black text-white transition-all active:scale-95"
                   style={{ background: 'var(--primary)', fontSize: '1.25rem', padding: '16px 24px', minHeight: 60 }}
                 >
-                  {feedback.correct && completedIds.size >= totalUnique - 1 ? 'Finish! 🎉' : 'Continue →'}
+                  {feedback.correct && missedQueue.length === 0 && (reviewing || isLastPrimary)
+                    ? 'Finish! 🎉'
+                    : 'Continue →'}
                 </button>
               </div>
             )}
@@ -209,16 +266,21 @@ export default function SessionRunner({ sessionId, questionIds, skillName }: Pro
 }
 
 function CompletionScreen({ xp, streak, onDone }: { xp: number; streak: number; onDone: () => void }) {
-  const [visible, setVisible] = useState(false)
-  useEffect(() => { const t = setTimeout(() => setVisible(true), 100); return () => clearTimeout(t) }, [])
+  useEffect(() => {
+    let cancelled = false
+    import('canvas-confetti').then(({ default: confetti }) => {
+      if (!cancelled) confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 }, colors: ['#6c63ff', '#f59e0b', '#22c55e'] })
+    })
+    return () => { cancelled = true }
+  }, [])
 
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-5 text-center safe-bottom"
       style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
     >
-      <div className={`transition-all duration-700 ${visible ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`}>
-        <div style={{ fontSize: 96, lineHeight: 1, marginBottom: 16 }}>🏆</div>
+      <div className="mb-2">
+        <Mascot mood="excited" size={120} />
       </div>
 
       <h1 className="font-black text-white mb-2" style={{ fontSize: 'clamp(2rem, 8vw, 2.5rem)' }}>You did it!</h1>

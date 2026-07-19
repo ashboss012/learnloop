@@ -1,6 +1,8 @@
-# 08. Adaptive Engine (Later)
+# 08. Adaptive Engine
 
-A later feature. This file exists so that when you build it, you start from real learning science instead of the pop version. Do not build this in v1. The engagement loop already carries most of the benefit.
+**Status: first slice shipped.** Per-skill tier (1-3) per student, seeded from grade (lib/mastery.ts) and stepped +-1 after every primary-pass question based on first-attempt correctness (app/actions/session.ts getNextQuestion, schema in supabase/migrations/004_user_skill_progress.sql). This is signal 1 below ("per-skill mastery"), simplified to a single recent-question nudge instead of a rolling accuracy window. Signal 2 (spaced review across sessions) and interleaving are still not built — read this whole doc before extending either.
+
+This file exists so that when you extend it, you start from real learning science instead of the pop version.
 
 ## The trap to avoid
 
