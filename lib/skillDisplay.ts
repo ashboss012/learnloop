@@ -11,6 +11,12 @@ export const SKILL_ICONS: Record<string, string> = {
   'math-prime-composite': '🔍',
   'math-fraction-multiplication': '🍕',
   'math-elapsed-time': '⏱️',
+  'english-parts-of-speech': '📝',
+  'english-subject-verb-agreement': '🔗',
+  'english-tenses': '⏳',
+  'english-punctuation': '❗',
+  'english-capitalization': '🔠',
+  'english-plurals': '👥',
 }
 
 export const SKILL_COLORS: Record<string, string> = {
@@ -26,4 +32,10 @@ export const SKILL_COLORS: Record<string, string> = {
   'math-prime-composite': '#06b6d4',
   'math-fraction-multiplication': '#84cc16',
   'math-elapsed-time': '#d946ef',
+  'english-parts-of-speech': '#f97316',
+  'english-subject-verb-agreement': '#10b981',
+  'english-tenses': '#6366f1',
+  'english-punctuation': '#f43f5e',
+  'english-capitalization': '#0891b2',
+  'english-plurals': '#a3e635',
 }

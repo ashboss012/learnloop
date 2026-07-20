@@ -28,6 +28,14 @@ const GRADE_BANDS: Record<string, (grade: number) => Tier> = {
   'math-prime-composite':         grade => (grade <= 4 ? 1 : grade === 5 ? 2 : 3),
   'math-fraction-multiplication': grade => (grade <= 4 ? 1 : grade === 5 ? 2 : 3),
   'math-elapsed-time':            grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
+  // Grammar fluency skills - same grade-appropriate band as the
+  // arithmetic-fluency math skills above.
+  'english-parts-of-speech':          grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
+  'english-subject-verb-agreement':   grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
+  'english-tenses':                   grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
+  'english-punctuation':              grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
+  'english-capitalization':           grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
+  'english-plurals':                  grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
 }
 
 export function startingTier(slug: string, grade: number): Tier {

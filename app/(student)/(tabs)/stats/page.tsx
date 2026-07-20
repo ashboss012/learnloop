@@ -31,7 +31,7 @@ export default async function StatsPage() {
   ] = await Promise.all([
     supabase.from('users').select('grade').eq('id', userId).single(),
     supabase.from('streaks').select('current_streak, longest_streak').eq('user_id', userId).single(),
-    supabase.from('skills').select('id, name, slug').eq('subject', 'math').order('difficulty_order'),
+    supabase.from('skills').select('id, name, slug').order('subject').order('difficulty_order'),
     supabase.from('user_skill_progress').select('skill_id, tier').eq('user_id', userId),
     supabase.from('sessions').select('status, completed_at').eq('user_id', userId),
     supabase.from('session_answers').select('was_correct, session_questions(skill_id)').eq('attempt_number', 1),

@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { generateQuestion } from '@/lib/math/generator'
+import { generateQuestion } from '@/lib/questionGenerator'
 import { startingTier, type Tier } from '@/lib/mastery'
 import { revalidatePath } from 'next/cache'
 

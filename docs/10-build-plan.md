@@ -23,9 +23,12 @@ Do not proceed to Phase 2 until Phase 1 actually hooks him. If it does not, fix 
 
 ## Phase 2. Review pipeline plus English
 
+**Status: grammar shipped, reading comprehension + review pipeline not started.** Grammar didn't need the content lifecycle or admin review view — it's rule-based and code-verified like math (03), so it's generated on-demand with no LLM, same architecture as the math skills (lib/english/generator.ts). Reading comprehension is the part still gated: it needs an LLM API key (none configured yet) and the actual review pipeline (05) — draft/pending/published/rejected content lifecycle, admin review UI, offline batch generation. Read 05 fully before starting that half.
+
+- ~~Add grammar (rule-based, light review) from 03~~ — done
 - Build the content lifecycle and the admin review view (05)
-- Add grammar (rule-based, light review) and reading comprehension (original passages, full review) from 03
-- Now the app has two subjects and a working way to add safe content
+- Add reading comprehension (original passages, full review) from 03
+- Once both land, the app has a working way to add safe content beyond grammar
 
 ## Phase 3. Tamil
 

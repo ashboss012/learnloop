@@ -6,6 +6,7 @@ import StartSessionButton from '@/components/StartSessionButton'
 import Mascot from '@/components/Mascot'
 import { startingTier } from '@/lib/mastery'
 import { SKILL_ICONS, SKILL_COLORS } from '@/lib/skillDisplay'
+import type { Skill } from '@/types'
 
 export default async function Dashboard() {
   const supabase = await createClient()
@@ -15,13 +16,15 @@ export default async function Dashboard() {
   const [{ currentStreak }, { data: profile }, { data: skills }, { data: progress }] = await Promise.all([
     getHeaderData(userId),
     supabase.from('users').select('display_name, grade').eq('id', userId).single(),
-    supabase.from('skills').select('*').eq('subject', 'math').order('difficulty_order'),
+    supabase.from('skills').select('*').order('subject').order('difficulty_order'),
     supabase.from('user_skill_progress').select('skill_id, tier').eq('user_id', userId),
   ])
 
   const displayName = profile?.display_name ?? 'Friend'
   const grade = profile?.grade ?? 4
   const tierBySkill = new Map((progress ?? []).map(p => [p.skill_id, p.tier]))
+  const mathSkills = (skills ?? []).filter(s => s.subject === 'math')
+  const englishSkills = (skills ?? []).filter(s => s.subject === 'english')
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8">
@@ -45,13 +48,32 @@ export default async function Dashboard() {
         </div>
       )}
 
-      {/* Skills grid */}
+      <SkillSection title="Math Skills" skills={mathSkills} tierBySkill={tierBySkill} grade={grade} />
+      {englishSkills.length > 0 && (
+        <div className="mt-8">
+          <SkillSection title="English Skills" skills={englishSkills} tierBySkill={tierBySkill} grade={grade} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SkillSection({
+  title, skills, tierBySkill, grade,
+}: {
+  title: string
+  skills: Skill[]
+  tierBySkill: Map<string, number>
+  grade: number
+}) {
+  return (
+    <>
       <div className="mb-4">
         <span className="block w-8 h-1 rounded-full mb-2" style={{ background: 'var(--primary)' }} />
-        <h2 className="text-xl font-black">Math Skills</h2>
+        <h2 className="text-xl font-black">{title}</h2>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        {skills?.map(skill => (
+        {skills.map(skill => (
           <StartSessionButton
             key={skill.id}
             skill={skill}
@@ -61,6 +83,6 @@ export default async function Dashboard() {
           />
         ))}
       </div>
-    </div>
+    </>
   )
 }

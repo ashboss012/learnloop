@@ -1,12 +1,6 @@
-import type { Choice } from '@/types'
+import type { GeneratedQuestion, Choice } from '@/types'
 
-export interface GeneratedQuestion {
-  prompt: string
-  choices: Choice[]
-  answer: string
-  explanation: string
-  type: 'multiple_choice'
-}
+export type { GeneratedQuestion }
 
 function randInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min

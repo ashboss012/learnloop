@@ -118,9 +118,19 @@ of the current phase without being asked.
   wrong operation, place-value slips). Multi-step word problems and
   anything needing a diagram (geometry, line plots) are explicitly
   out of scope — see docs/02-content-math.md "Not in v1"
+- English skills (6, Phase 2 first slice): parts of speech,
+  subject-verb agreement, tenses, punctuation, capitalization,
+  plurals — same generator architecture as math (on-demand, no LLM),
+  content from hand-authored word/sentence banks in
+  lib/english/generator.ts instead of arithmetic. Reading
+  comprehension is NOT built — needs an LLM key and the review
+  pipeline (docs 03, 05), neither of which exist yet
+- lib/questionGenerator.ts routes generateQuestion() by slug prefix
+  (math-*/english-*) to the right subject's generator module
 - Schema + RLS + skill seed in supabase/migrations/001_initial.sql
-  (+ 005_more_math_skills.sql for the later 8);
-  adaptive engine schema in 004_user_skill_progress.sql
+  (+ 005_more_math_skills.sql, 006_english_grammar_skills.sql for
+  the later skills); adaptive engine schema in
+  004_user_skill_progress.sql
 
 ## Environment
 

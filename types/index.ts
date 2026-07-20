@@ -33,6 +33,15 @@ export interface Choice {
   value: string
 }
 
+// Shared by lib/math/generator.ts and lib/english/generator.ts
+export interface GeneratedQuestion {
+  prompt: string
+  choices: Choice[]
+  answer: string
+  explanation: string
+  type: 'multiple_choice'
+}
+
 export interface SessionAnswer {
   id: string
   session_id: string
