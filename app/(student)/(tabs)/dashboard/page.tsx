@@ -4,8 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 import { getAuthedUser, getHeaderData } from '@/lib/data/student'
 import StartSessionButton from '@/components/StartSessionButton'
 import Mascot from '@/components/Mascot'
+import CheckinCard from '@/components/CheckinCard'
 import { startingTier } from '@/lib/mastery'
 import { SKILL_ICONS, SKILL_COLORS } from '@/lib/skillDisplay'
+import { getCheckinData } from '@/app/actions/checkin'
 import type { Skill } from '@/types'
 
 export default async function Dashboard() {
@@ -13,14 +15,15 @@ export default async function Dashboard() {
   const user = await getAuthedUser()
   const userId = user?.id ?? ''
 
-  const [{ currentStreak }, { data: profile }, { data: skills }, { data: progress }] = await Promise.all([
+  const [{ currentStreak }, { data: profile }, { data: skills }, { data: progress }, checkin] = await Promise.all([
     getHeaderData(userId),
     supabase.from('users').select('display_name, grade, math_diagnostic_done, english_diagnostic_done').eq('id', userId).single(),
     supabase.from('skills').select('*').order('subject').order('difficulty_order'),
     supabase.from('user_skill_progress').select('skill_id, tier').eq('user_id', userId),
+    getCheckinData(),
   ])
 
-  const displayName = profile?.display_name ?? 'Friend'
+  const displayName = profile?.display_name ?? 'Explorer'
   const grade = profile?.grade ?? 4
   const tierBySkill = new Map((progress ?? []).map(p => [p.skill_id, p.tier]))
   const mathSkills = (skills ?? []).filter(s => s.subject === 'math')
@@ -38,6 +41,15 @@ export default async function Dashboard() {
           <p className="text-gray-500 font-semibold">What do you want to practice today?</p>
         </div>
       </div>
+
+      {checkin.due && (
+        <CheckinCard
+          sessionsCompleted={checkin.sessionsCompleted}
+          questionsAnswered={checkin.questionsAnswered}
+          overallAccuracy={checkin.overallAccuracy}
+          skills={checkin.skills}
+        />
+      )}
 
       {/* Streak banner */}
       {currentStreak > 0 && (

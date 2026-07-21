@@ -16,7 +16,7 @@ export default async function ProfilePage() {
     .eq('id', userId)
     .single()
 
-  const displayName = profile?.display_name ?? 'Friend'
+  const displayName = profile?.display_name ?? 'Explorer'
   const grade = profile?.grade ?? 4
   const xp = profile?.xp_total ?? 0
   const memberSince = profile?.created_at
