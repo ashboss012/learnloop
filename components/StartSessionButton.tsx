@@ -3,20 +3,32 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { startSession } from '@/app/actions/session'
+import { startDiagnostic } from '@/app/actions/diagnostic'
 
 interface Props {
-  skill: { id: string; name: string; slug: string }
+  skill: { id: string; name: string; slug: string; subject: string }
   color: string
   icon: string
   tier: number
+  diagnosticDone: boolean
 }
 
-export default function StartSessionButton({ skill, color, icon, tier }: Props) {
+export default function StartSessionButton({ skill, color, icon, tier, diagnosticDone }: Props) {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
   async function handleClick() {
     setLoading(true)
+    if (!diagnosticDone) {
+      const result = await startDiagnostic(skill.subject)
+      if ('error' in result) {
+        alert(result.error)
+        setLoading(false)
+        return
+      }
+      router.push(`/diagnostic/${result.sessionId}`)
+      return
+    }
     const result = await startSession(skill.id)
     if ('error' in result) {
       alert(result.error)

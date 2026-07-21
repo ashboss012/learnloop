@@ -63,8 +63,9 @@ function genPartsOfSpeech(tier: number): GeneratedQuestion {
   const candidates = inScope.filter(w => w.pos === targetPos)
   const target = candidates[randInt(0, candidates.length - 1)]
   const others = shuffle(inScope.filter(w => w.pos !== targetPos)).slice(0, 3)
+  const article = targetPos === 'adjective' || targetPos === 'adverb' ? 'an' : 'a'
   return {
-    prompt: `Which word is a ${targetPos}?`,
+    prompt: `Which word is ${article} ${targetPos}?`,
     choices: buildChoices(target.word, others.map(o => o.word)),
     answer: target.word,
     explanation: `"${target.word}" is a ${targetPos}.`,

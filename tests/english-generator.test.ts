@@ -52,10 +52,12 @@ describe('genPartsOfSpeech', () => {
     test(`tier ${tier}: ${SAMPLES} samples — correct part of speech identified`, () => {
       const questions = times(SAMPLES, () => generateQuestion('english-parts-of-speech', tier))
       for (const q of questions) {
-        const match = q.prompt.match(/Which word is a (noun|verb|adjective|adverb)\?/)
+        const match = q.prompt.match(/Which word is (an?) (noun|verb|adjective|adverb)\?/)
         expect(match, 'prompt format mismatch').toBeTruthy()
-        const askedPos = match![1]
+        const article = match![1], askedPos = match![2]
         expect(allowedByTier[tier], `tier ${tier} should not ask about ${askedPos}`).toContain(askedPos)
+        const expectedArticle = askedPos === 'adjective' || askedPos === 'adverb' ? 'an' : 'a'
+        expect(article, `wrong article for "${askedPos}"`).toBe(expectedArticle)
 
         const entry = WORD_BANK.find(w => w.word === q.answer)
         expect(entry, `"${q.answer}" not found in word bank`).toBeTruthy()

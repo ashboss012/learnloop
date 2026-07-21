@@ -39,6 +39,13 @@ function assertChoiceInvariants(q: ReturnType<typeof generateQuestion>, label: s
     expect(v, `${label}: NaN/undefined choice`).not.toMatch(/^NaN/)
   }
 
+  // no float artifacts in ANY choice, not just the answer - a distractor
+  // built from float math (e.g. parseFloat(x) + 0.1) can produce
+  // "5.9799999999999995" even when the answer itself is clean
+  for (const v of values) {
+    expect(v, `${label}: float artifact in choice "${v}"`).not.toMatch(/\.\d{4,}/)
+  }
+
   // explanation is non-empty
   expect(q.explanation.trim().length, `${label}: empty explanation`).toBeGreaterThan(0)
 }

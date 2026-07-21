@@ -15,7 +15,7 @@ export default async function Dashboard() {
 
   const [{ currentStreak }, { data: profile }, { data: skills }, { data: progress }] = await Promise.all([
     getHeaderData(userId),
-    supabase.from('users').select('display_name, grade').eq('id', userId).single(),
+    supabase.from('users').select('display_name, grade, math_diagnostic_done, english_diagnostic_done').eq('id', userId).single(),
     supabase.from('skills').select('*').order('subject').order('difficulty_order'),
     supabase.from('user_skill_progress').select('skill_id, tier').eq('user_id', userId),
   ])
@@ -25,6 +25,8 @@ export default async function Dashboard() {
   const tierBySkill = new Map((progress ?? []).map(p => [p.skill_id, p.tier]))
   const mathSkills = (skills ?? []).filter(s => s.subject === 'math')
   const englishSkills = (skills ?? []).filter(s => s.subject === 'english')
+  const mathDiagnosticDone = profile?.math_diagnostic_done ?? false
+  const englishDiagnosticDone = profile?.english_diagnostic_done ?? false
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8">
@@ -48,10 +50,22 @@ export default async function Dashboard() {
         </div>
       )}
 
-      <SkillSection title="Math Skills" skills={mathSkills} tierBySkill={tierBySkill} grade={grade} />
+      <SkillSection
+        title="Math Skills"
+        skills={mathSkills}
+        tierBySkill={tierBySkill}
+        grade={grade}
+        diagnosticDone={mathDiagnosticDone}
+      />
       {englishSkills.length > 0 && (
         <div className="mt-8">
-          <SkillSection title="English Skills" skills={englishSkills} tierBySkill={tierBySkill} grade={grade} />
+          <SkillSection
+            title="English Skills"
+            skills={englishSkills}
+            tierBySkill={tierBySkill}
+            grade={grade}
+            diagnosticDone={englishDiagnosticDone}
+          />
         </div>
       )}
     </div>
@@ -59,18 +73,22 @@ export default async function Dashboard() {
 }
 
 function SkillSection({
-  title, skills, tierBySkill, grade,
+  title, skills, tierBySkill, grade, diagnosticDone,
 }: {
   title: string
   skills: Skill[]
   tierBySkill: Map<string, number>
   grade: number
+  diagnosticDone: boolean
 }) {
   return (
     <>
       <div className="mb-4">
         <span className="block w-8 h-1 rounded-full mb-2" style={{ background: 'var(--primary)' }} />
         <h2 className="text-xl font-black">{title}</h2>
+        {!diagnosticDone && (
+          <p className="text-xs font-bold text-gray-400 mt-1">Tap any skill to start with a quick check-in</p>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-4">
         {skills.map(skill => (
@@ -80,6 +98,7 @@ function SkillSection({
             color={SKILL_COLORS[skill.slug] ?? '#6c63ff'}
             icon={SKILL_ICONS[skill.slug] ?? '📐'}
             tier={tierBySkill.get(skill.id) ?? startingTier(skill.slug, grade)}
+            diagnosticDone={diagnosticDone}
           />
         ))}
       </div>

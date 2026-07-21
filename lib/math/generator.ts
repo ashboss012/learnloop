@@ -183,7 +183,7 @@ function genDecimals(tier: number): GeneratedQuestion {
     const smaller = af > bf ? String(bf) : String(af)
     return {
       prompt: `Which decimal is larger: ${af} or ${bf}?`,
-      choices: buildChoices(bigger, [smaller, 'They are equal', String(parseFloat(bigger) + 0.1)]),
+      choices: buildChoices(bigger, [smaller, 'They are equal', String(parseFloat((parseFloat(bigger) + 0.1).toFixed(2)))]),
       answer: bigger,
       explanation: `Compare digit by digit from left to right. ${bigger} > ${smaller}.`,
       type: 'multiple_choice',
