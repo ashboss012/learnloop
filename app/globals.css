@@ -22,12 +22,67 @@ body {
 }
 
 .bg-blobs {
+  position: relative;
+  background: var(--bg);
+  isolation: isolate;
+}
+
+.bg-blobs::before {
+  content: '';
+  position: fixed;
+  inset: -15%;
+  z-index: -1;
   background:
-    radial-gradient(600px circle at 15% -10%, rgba(108,99,255,0.10), transparent 60%),
-    radial-gradient(500px circle at 110% 5%,  rgba(245,158,11,0.12), transparent 60%),
-    radial-gradient(500px circle at 45% 115%, rgba(34,197,94,0.10), transparent 60%),
-    var(--bg);
-  background-attachment: fixed;
+    radial-gradient(650px circle at 12% -8%,  rgba(108,99,255,0.20), transparent 55%),
+    radial-gradient(550px circle at 108% 8%,  rgba(245,158,11,0.20), transparent 55%),
+    radial-gradient(550px circle at 45% 112%, rgba(34,197,94,0.18), transparent 55%),
+    radial-gradient(450px circle at 88% 78%,  rgba(217,70,239,0.14), transparent 55%);
+  animation: blobDrift 26s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes blobDrift {
+  0%   { transform: translate(0%, 0%) scale(1); }
+  50%  { transform: translate(-1.5%, 1.5%) scale(1.04); }
+  100% { transform: translate(1.5%, -1%) scale(1); }
+}
+
+/* Frosted glass treatment for fixed header/tab bars, so they read as part
+   of the background rather than flat white strips on top of it. */
+.glass-bar {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* Entrance transition applied to a page's own root wrapper - each route's
+   page.tsx remounts on navigation even when a shared layout doesn't, so
+   this animates in on every page change with no client JS needed. */
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter {
+  animation: pageIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Per-question entrance, applied with key={question.id} on the wrapper so
+   React remounts the node (and restarts the animation) on every new
+   question. */
+@keyframes questionCardIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.question-enter {
+  animation: questionCardIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-blobs::before,
+  .page-enter,
+  .question-enter {
+    animation: none;
+  }
 }
 
 /* Remove 300ms tap delay on all interactive elements */

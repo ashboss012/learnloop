@@ -235,7 +235,7 @@ export default function SessionRunner({ sessionId, skillName, totalQuestions, in
   return (
     <div className="min-h-screen flex flex-col bg-blobs">
       {/* Top bar — sticky, safe-area aware */}
-      <div className="safe-top sticky top-0 z-10 bg-white border-b-2" style={{ borderColor: 'var(--border)' }}>
+      <div className="safe-top sticky top-0 z-10 glass-bar border-b-2" style={{ borderColor: 'var(--border)' }}>
         <div className="max-w-lg mx-auto flex items-center gap-3 px-4 py-3">
           <button
             onClick={() => router.push('/dashboard')}
@@ -297,7 +297,7 @@ export default function SessionRunner({ sessionId, skillName, totalQuestions, in
         )}
 
         {(phase === 'question' || phase === 'feedback') && question && (
-          <>
+          <div key={question.id} className="question-enter flex-1 flex flex-col">
             {isReading && question.passage_text && (
               <div
                 className="rounded-3xl p-5 mb-4 text-sm leading-relaxed whitespace-pre-wrap"
@@ -385,7 +385,7 @@ export default function SessionRunner({ sessionId, skillName, totalQuestions, in
                 </button>
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
     </div>
@@ -417,7 +417,7 @@ function CompletionScreen({
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center px-5 text-center safe-bottom"
+      className="min-h-screen flex flex-col items-center justify-center px-5 text-center safe-bottom page-enter"
       style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
     >
       <div className="mb-2">
@@ -479,7 +479,7 @@ function CompletionScreen({
 function SkipOfferScreen({ onAccept, onDecline }: { onAccept: () => void; onDecline: () => void }) {
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center px-5 text-center safe-bottom"
+      className="min-h-screen flex flex-col items-center justify-center px-5 text-center safe-bottom page-enter"
       style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
     >
       <div className="mb-4">

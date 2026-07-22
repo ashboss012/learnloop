@@ -9,7 +9,7 @@ export default async function TabsLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="min-h-screen bg-blobs flex flex-col">
-      <header className="safe-top sticky top-0 z-10 bg-white border-b-2" style={{ borderColor: 'var(--border)' }}>
+      <header className="safe-top sticky top-0 z-10 glass-bar border-b-2" style={{ borderColor: 'var(--border)' }}>
         <div className="px-4 py-3 flex items-center justify-between gap-2 max-w-lg mx-auto w-full">
           <span className="text-xl font-black shrink-0" style={{ color: 'var(--primary)' }}>🧠 LearnLoop</span>
           <div className="flex items-center gap-3 min-w-0">

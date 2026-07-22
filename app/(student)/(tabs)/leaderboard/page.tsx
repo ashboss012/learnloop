@@ -15,7 +15,7 @@ export default async function LeaderboardPage() {
   const board = await getWeeklyBoard(userId, grade)
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8">
+    <div className="max-w-lg mx-auto px-4 py-8 page-enter">
       <div className="mb-6">
         <h1 className="text-3xl font-black mb-1 tracking-tight">Leaderboard 🏆</h1>
         <p className="text-gray-500 font-semibold">This week&apos;s top climbers — resets Monday.</p>

@@ -24,7 +24,7 @@ export default async function ProfilePage() {
     : null
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8">
+    <div className="max-w-lg mx-auto px-4 py-8 page-enter">
       <div className="mb-6 flex items-center gap-3">
         <Mascot mood="happy" size={56} />
         <div>

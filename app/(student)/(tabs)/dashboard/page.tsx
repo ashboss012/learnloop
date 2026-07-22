@@ -32,7 +32,7 @@ export default async function Dashboard() {
   const englishDiagnosticDone = profile?.english_diagnostic_done ?? false
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8">
+    <div className="max-w-lg mx-auto px-4 py-8 page-enter">
       {/* Greeting */}
       <div className="mb-6 flex items-center gap-3">
         <Mascot mood={currentStreak > 0 ? 'excited' : 'happy'} size={56} />

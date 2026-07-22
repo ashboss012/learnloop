@@ -64,8 +64,8 @@ export default async function AdminPage() {
   const skills: SkillRow[] = skillRaw ?? []
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
-      <header className="safe-top bg-white border-b-2 px-5 py-4 flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+    <div className="min-h-screen bg-blobs">
+      <header className="safe-top sticky top-0 z-10 glass-bar border-b-2 px-5 py-4 flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
         <h1 className="text-xl font-black" style={{ color: 'var(--primary)' }}>🔬 Admin — Usage</h1>
         <div className="flex items-center gap-4">
           <a href="/admin/review" className="text-sm font-bold" style={{ color: 'var(--primary)' }}>Content Review →</a>
@@ -75,7 +75,7 @@ export default async function AdminPage() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-8 space-y-10">
+      <main className="max-w-2xl mx-auto px-4 py-8 space-y-10 page-enter">
 
         {/* Students */}
         <section>

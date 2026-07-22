@@ -26,13 +26,13 @@ export default async function ReviewPage() {
   const bundles = (pending ?? []) as unknown as PassageBundle[]
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
-      <header className="safe-top bg-white border-b-2 px-5 py-4 flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+    <div className="min-h-screen bg-blobs">
+      <header className="safe-top sticky top-0 z-10 glass-bar border-b-2 px-5 py-4 flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
         <h1 className="text-xl font-black" style={{ color: 'var(--primary)' }}>📖 Content Review</h1>
         <a href="/admin" className="text-sm text-gray-400 font-semibold">← Usage</a>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+      <main className="max-w-2xl mx-auto px-4 py-8 space-y-6 page-enter">
         <div className="flex items-center justify-between bg-white rounded-2xl border-2 p-4 flex-wrap gap-3" style={{ borderColor: 'var(--border)' }}>
           <div className="text-sm font-semibold text-gray-600">
             {bundles.length} pending · {publishedCount ?? 0} published · {rejectedCount ?? 0} rejected
