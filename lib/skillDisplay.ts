@@ -17,6 +17,7 @@ export const SKILL_ICONS: Record<string, string> = {
   'english-punctuation': '❗',
   'english-capitalization': '🔠',
   'english-plurals': '👥',
+  'english-reading-comprehension': '📖',
 }
 
 export const SKILL_COLORS: Record<string, string> = {
@@ -38,4 +39,5 @@ export const SKILL_COLORS: Record<string, string> = {
   'english-punctuation': '#f43f5e',
   'english-capitalization': '#0891b2',
   'english-plurals': '#a3e635',
+  'english-reading-comprehension': '#7c3aed',
 }

@@ -4,9 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 import { generateQuestion } from '@/lib/questionGenerator'
 import { revalidatePath } from 'next/cache'
 
-// Placement questions run at a fixed medium tier - the point is reading
-// his natural level once, not adapting mid-diagnostic.
-const DIAGNOSTIC_TIER = 2
+// Round 1 always runs at a fixed medium tier - the point is reading his
+// natural level once per skill. Math gets a round 2 (see getDiagnosticRound2)
+// whose tier depends on round 1's result; English stays single-round.
+const DIAGNOSTIC_ROUND1_TIER = 2
 
 type DiagnosticColumn = 'math_diagnostic_done' | 'english_diagnostic_done'
 
@@ -29,12 +30,18 @@ export async function startDiagnostic(subject: string) {
     return { error: 'Diagnostic already completed for this subject' }
   }
 
+  // Reading comprehension has no adaptive tier and pulls from the reviewed
+  // content pool, not the tiered generator - it can't be placed the way
+  // every other skill can, so it's excluded from the diagnostic entirely.
   const { data: skills } = await supabase
     .from('skills')
     .select('id, slug')
     .eq('subject', subject)
+    .neq('slug', 'english-reading-comprehension')
     .order('difficulty_order')
   if (!skills || skills.length === 0) return { error: 'No skills found for this subject' }
+
+  const rounds = subject === 'math' ? 2 : 1
 
   // Anchored to the first skill purely to satisfy the FK - session_questions
   // below span every skill in the subject, not just this one.
@@ -45,14 +52,16 @@ export async function startDiagnostic(subject: string) {
       skill_id: skills[0].id,
       subject,
       kind: 'diagnostic',
-      question_count: skills.length,
+      question_count: skills.length * rounds,
     })
     .select()
     .single()
   if (sessionErr) return { error: sessionErr.message }
 
+  // Only round 1 is generated now - round 2 (math only) depends on round
+  // 1's live results and is fetched on demand (getDiagnosticRound2).
   const rows = skills.map((skill, i) => {
-    const q = generateQuestion(skill.slug, DIAGNOSTIC_TIER)
+    const q = generateQuestion(skill.slug, DIAGNOSTIC_ROUND1_TIER)
     return {
       session_id: session.id,
       skill_id: skill.id,
@@ -60,7 +69,7 @@ export async function startDiagnostic(subject: string) {
       choices: q.choices,
       answer: q.answer,
       explanation: q.explanation,
-      difficulty: DIAGNOSTIC_TIER,
+      difficulty: DIAGNOSTIC_ROUND1_TIER,
       position: i,
     }
   })
@@ -78,17 +87,17 @@ export async function getDiagnosticForRunner(sessionId: string) {
 
   const { data: session } = await supabase
     .from('sessions')
-    .select('user_id, status, subject, kind')
+    .select('user_id, status, subject, kind, question_count')
     .eq('id', sessionId)
     .single()
   if (!session || session.user_id !== user.id) return { error: 'Forbidden' }
   if (session.kind !== 'diagnostic') return { error: 'Not a diagnostic session' }
   if (session.status === 'completed') return { error: 'Already completed' }
 
-  // Every question was generated upfront in startDiagnostic (fixed tier,
-  // no adaptivity mid-diagnostic), so - unlike a practice session - the
-  // whole ordered set is safe to hand to the client at once. Never
-  // selects "answer" (non-negotiable #5).
+  // Only whatever's been generated so far (round 1 alone on a fresh math
+  // diagnostic) - unlike a practice session, a whole generated batch is
+  // safe to hand to the client at once since tier is fixed per round.
+  // Never selects "answer" (non-negotiable #5).
   const { data: questions, error } = await supabase
     .from('session_questions')
     .select('id, prompt, choices, difficulty, position')
@@ -96,7 +105,79 @@ export async function getDiagnosticForRunner(sessionId: string) {
     .order('position')
   if (error || !questions || questions.length === 0) return { error: 'Questions not found' }
 
-  return { subject: session.subject as string, questions }
+  return { subject: session.subject as string, questionCount: session.question_count, questions }
+}
+
+export async function getDiagnosticRound2(sessionId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data: session } = await supabase
+    .from('sessions')
+    .select('user_id, status, subject, kind')
+    .eq('id', sessionId)
+    .single()
+  if (!session || session.user_id !== user.id) return { error: 'Forbidden' }
+  if (session.kind !== 'diagnostic') return { error: 'Not a diagnostic session' }
+  if (session.subject !== 'math') return { error: 'Round 2 only applies to math' }
+  if (session.status === 'completed') return { error: 'Already completed' }
+
+  const { data: mathSkills } = await supabase
+    .from('skills')
+    .select('id, slug')
+    .eq('subject', 'math')
+    .order('difficulty_order')
+  if (!mathSkills || mathSkills.length === 0) return { error: 'No skills found' }
+  const round1Count = mathSkills.length
+
+  // Idempotency: if round 2 already exists, just return it.
+  const { data: existing } = await supabase
+    .from('session_questions')
+    .select('id, prompt, choices, difficulty, position')
+    .eq('session_id', sessionId)
+    .gte('position', round1Count)
+    .order('position')
+  if (existing && existing.length > 0) return { questions: existing }
+
+  const { data: round1Answers } = await supabase
+    .from('session_answers')
+    .select('was_correct, session_questions(skill_id)')
+    .eq('session_id', sessionId)
+    .eq('attempt_number', 1)
+
+  type AnswerRow = { was_correct: boolean; session_questions: { skill_id: string } | { skill_id: string }[] | null }
+  const correctBySkill = new Map<string, boolean>()
+  for (const row of (round1Answers ?? []) as AnswerRow[]) {
+    const sq = row.session_questions
+    const skillId = Array.isArray(sq) ? sq[0]?.skill_id : sq?.skill_id
+    if (skillId) correctBySkill.set(skillId, row.was_correct)
+  }
+
+  const rows = mathSkills.map((skill, i) => {
+    const wasCorrect = correctBySkill.get(skill.id) ?? false
+    const tier = wasCorrect ? 3 : 1
+    const q = generateQuestion(skill.slug, tier)
+    return {
+      session_id: sessionId,
+      skill_id: skill.id,
+      prompt: q.prompt,
+      choices: q.choices,
+      answer: q.answer,
+      explanation: q.explanation,
+      difficulty: tier,
+      position: round1Count + i,
+    }
+  })
+
+  const { data: inserted, error: qErr } = await supabase
+    .from('session_questions')
+    .insert(rows)
+    .select('id, prompt, choices, difficulty, position')
+    .order('position')
+  if (qErr || !inserted) return { error: qErr?.message ?? 'Failed to generate round 2' }
+
+  return { questions: inserted }
 }
 
 export async function completeDiagnostic(sessionId: string) {
@@ -118,17 +199,40 @@ export async function completeDiagnostic(sessionId: string) {
 
   const { data: answers } = await supabase
     .from('session_answers')
-    .select('was_correct, session_questions(skill_id)')
+    .select('was_correct, session_questions(skill_id, position)')
     .eq('session_id', sessionId)
     .eq('attempt_number', 1)
 
-  const now = new Date().toISOString()
-  type AnswerRow = { was_correct: boolean; session_questions: { skill_id: string } | { skill_id: string }[] | null }
+  type AnswerRow = {
+    was_correct: boolean
+    session_questions: { skill_id: string; position: number } | { skill_id: string; position: number }[] | null
+  }
+
+  // Group by skill - English has 1 row per skill (binary), math has 2
+  // (round 1 + round 2), combined into a 3-way placement.
+  const bySkill = new Map<string, { position: number; correct: boolean }[]>()
   for (const row of (answers ?? []) as AnswerRow[]) {
     const sq = row.session_questions
-    const skillId = Array.isArray(sq) ? sq[0]?.skill_id : sq?.skill_id
-    if (!skillId) continue
-    const tier = row.was_correct ? 3 : 1
+    const entry = Array.isArray(sq) ? sq[0] : sq
+    if (!entry) continue
+    const list = bySkill.get(entry.skill_id) ?? []
+    list.push({ position: entry.position, correct: row.was_correct })
+    bySkill.set(entry.skill_id, list)
+  }
+
+  const now = new Date().toISOString()
+  for (const [skillId, results] of bySkill) {
+    results.sort((a, b) => a.position - b.position)
+    let tier: number
+    if (results.length === 1) {
+      tier = results[0].correct ? 3 : 1
+    } else {
+      const [r1, r2] = results
+      if (r1.correct && r2.correct) tier = 3
+      else if (r1.correct && !r2.correct) tier = 2
+      else if (!r1.correct && r2.correct) tier = 2
+      else tier = 1
+    }
     await supabase.from('user_skill_progress').upsert(
       { user_id: user.id, skill_id: skillId, tier, updated_at: now },
       { onConflict: 'user_id,skill_id' },

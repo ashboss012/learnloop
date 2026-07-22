@@ -44,10 +44,12 @@ export default async function Dashboard() {
 
       {checkin.due && (
         <CheckinCard
-          sessionsCompleted={checkin.sessionsCompleted}
+          skillName={checkin.skillName}
+          slug={checkin.slug}
           questionsAnswered={checkin.questionsAnswered}
-          overallAccuracy={checkin.overallAccuracy}
-          skills={checkin.skills}
+          correctCount={checkin.correctCount}
+          accuracy={checkin.accuracy}
+          xpEarned={checkin.xpEarned}
         />
       )}
 

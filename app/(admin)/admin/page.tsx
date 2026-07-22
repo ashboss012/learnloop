@@ -67,9 +67,12 @@ export default async function AdminPage() {
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       <header className="safe-top bg-white border-b-2 px-5 py-4 flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
         <h1 className="text-xl font-black" style={{ color: 'var(--primary)' }}>🔬 Admin — Usage</h1>
-        <form action="/api/auth/signout" method="POST">
-          <button className="text-sm text-gray-400 font-semibold" style={{ minHeight: 44 }}>Sign out</button>
-        </form>
+        <div className="flex items-center gap-4">
+          <a href="/admin/review" className="text-sm font-bold" style={{ color: 'var(--primary)' }}>Content Review →</a>
+          <form action="/api/auth/signout" method="POST">
+            <button className="text-sm text-gray-400 font-semibold" style={{ minHeight: 44 }}>Sign out</button>
+          </form>
+        </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-8 space-y-10">

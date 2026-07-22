@@ -41,6 +41,8 @@ import {
   getNextQuestion,
   gradeAnswer,
   completeSession,
+  getSkipCheckpoint,
+  resolveSkipCheckpoint,
 } from '@/app/actions/session'
 
 // Mock clients below are structurally shaped, not full SupabaseClient
@@ -318,29 +320,64 @@ function clientForStartSession({
 
 /**
  * Client for completeSession tests.
+ * `firstAttempts` models the session_answers rows at attempt_number=1;
+ * `questionCount` and `currentTier` drive the perfect-run/level-up path.
  */
-function clientForCompleteSession() {
+function clientForCompleteSession({
+  firstAttempts = [true, true, true, true, true, true, true, true] as boolean[],
+  questionCount = 8,
+  currentTier = 1,
+} = {}) {
   const rpc = makeRpc()
-  const client = {
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: USER_ID } } }) },
-    from: vi.fn().mockImplementation((table: string) => {
-      if (table === 'sessions') return {
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: { user_id: USER_ID, status: 'active' },
-              error: null,
-            }),
+  let upsertedTier: number | null = null
+  const progressUpsert = vi.fn().mockImplementation((row: { tier: number }) => {
+    upsertedTier = row.tier
+    return Promise.resolve({ data: null, error: null })
+  })
+
+  const tables: Record<string, unknown> = {
+    sessions: {
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { user_id: USER_ID, status: 'active', skill_id: 'sk1', question_count: questionCount },
+            error: null,
           }),
         }),
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+      }),
+      update: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+      }),
+    },
+    session_answers: {
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({
+            data: firstAttempts.map(was_correct => ({ was_correct })),
+            error: null,
+          }),
         }),
-      }
-      return {}
-    }),
+      }),
+    },
+    user_skill_progress: {
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: { tier: currentTier }, error: null }),
+          }),
+        }),
+      }),
+      upsert: progressUpsert,
+    },
+  }
+
+  const client = {
+    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: USER_ID } } }) },
+    from: vi.fn().mockImplementation((table: string) => tables[table] ?? {}),
     rpc,
     _rpc: rpc,
+    _getUpsertedTier: () => upsertedTier,
+    _progressUpsert: progressUpsert,
   }
   return client
 }
@@ -572,6 +609,306 @@ describe('completeSession — XP and streak (non-negotiables)', () => {
 
     const streakCall = client._rpc.mock.calls.find((c: unknown[]) => c[0] === 'update_streak')
     expect((streakCall![1] as { uid: string }).uid).toBe(USER_ID)
+  })
+})
+
+describe('completeSession — perfect-run skip-ahead reward', () => {
+  test('all first attempts correct, below Lv 3: reports perfect + leveledUp, upserts tier 3', async () => {
+    const client = clientForCompleteSession({
+      firstAttempts: [true, true, true, true, true, true, true, true],
+      questionCount: 8,
+      currentTier: 2,
+    })
+    vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
+
+    const result = await completeSession(SESS_ID)
+
+    expect((result as Record<string, unknown>).perfect).toBe(true)
+    expect((result as Record<string, unknown>).leveledUp).toBe(true)
+    expect(client._getUpsertedTier()).toBe(3)
+  })
+
+  test('already at Lv 3: perfect but not leveledUp, no upsert', async () => {
+    const client = clientForCompleteSession({
+      firstAttempts: [true, true, true, true, true, true, true, true],
+      questionCount: 8,
+      currentTier: 3,
+    })
+    vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
+
+    const result = await completeSession(SESS_ID)
+
+    expect((result as Record<string, unknown>).perfect).toBe(true)
+    expect((result as Record<string, unknown>).leveledUp).toBe(false)
+    expect(client._progressUpsert).not.toHaveBeenCalled()
+  })
+
+  test('one wrong first attempt: not perfect, no tier upsert, normal XP unaffected', async () => {
+    const client = clientForCompleteSession({
+      firstAttempts: [true, true, false, true, true, true, true, true],
+      questionCount: 8,
+      currentTier: 1,
+    })
+    vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
+
+    const result = await completeSession(SESS_ID)
+
+    expect((result as Record<string, unknown>).perfect).toBe(false)
+    expect((result as Record<string, unknown>).leveledUp).toBe(false)
+    expect(client._progressUpsert).not.toHaveBeenCalled()
+
+    const xpCalls = client._rpc.mock.calls.filter((c: unknown[]) => c[0] === 'increment_xp')
+    expect(xpCalls.length).toBe(1)
+    expect((xpCalls[0][1] as { amount: number }).amount).toBe(50)
+  })
+
+  test('fewer first attempts than question_count (session exited early): never perfect', async () => {
+    const client = clientForCompleteSession({
+      firstAttempts: [true, true, true],
+      questionCount: 8,
+      currentTier: 1,
+    })
+    vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
+
+    const result = await completeSession(SESS_ID)
+
+    expect((result as Record<string, unknown>).perfect).toBe(false)
+    expect(client._progressUpsert).not.toHaveBeenCalled()
+  })
+
+  test('a failed skip-checkpoint attempt (position >= question_count) does not break the perfect badge', async () => {
+    // 8 required questions, all correct, plus one wrong checkpoint answer
+    // from a declined/failed skip attempt earlier in the session.
+    const rpc = makeRpc()
+    let upsertedTier: number | null = null
+    const progressUpsert = vi.fn().mockImplementation((row: { tier: number }) => {
+      upsertedTier = row.tier
+      return Promise.resolve({ data: null, error: null })
+    })
+    const answers = [
+      ...Array.from({ length: 8 }, (_, i) => ({ was_correct: true, session_questions: { position: i } })),
+      { was_correct: false, session_questions: { position: 8 } },
+    ]
+    const tables: Record<string, unknown> = {
+      sessions: {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: { user_id: USER_ID, status: 'active', skill_id: 'sk1', question_count: 8 },
+              error: null,
+            }),
+          }),
+        }),
+        update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: null, error: null }) }),
+      },
+      session_answers: {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: answers, error: null }),
+          }),
+        }),
+      },
+      user_skill_progress: {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: { tier: 2 }, error: null }),
+            }),
+          }),
+        }),
+        upsert: progressUpsert,
+      },
+    }
+    const client = {
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: USER_ID } } }) },
+      from: vi.fn().mockImplementation((table: string) => tables[table] ?? {}),
+      rpc,
+    }
+    vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
+
+    const result = await completeSession(SESS_ID)
+
+    expect((result as Record<string, unknown>).perfect).toBe(true)
+    expect((result as Record<string, unknown>).leveledUp).toBe(true)
+    expect(upsertedTier).toBe(3)
+  })
+})
+
+// ── getSkipCheckpoint / resolveSkipCheckpoint ───────────────────────────────────
+
+function clientForGetSkipCheckpoint({
+  questionCount = 8,
+  skillSlug = 'math-multiplication',
+  existingCheckpoint = null as Record<string, unknown>[] | null,
+  sessionStatus = 'active' as 'active' | 'completed',
+} = {}) {
+  const insertedRows: Record<string, unknown>[] = []
+  const tables: Record<string, unknown> = {
+    sessions: {
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: {
+              user_id: USER_ID, status: sessionStatus, skill_id: 'sk1',
+              question_count: questionCount, skills: { slug: skillSlug },
+            },
+            error: null,
+          }),
+        }),
+      }),
+    },
+    session_questions: {
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          gte: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: existingCheckpoint ?? [], error: null }),
+          }),
+        }),
+      }),
+      insert: vi.fn().mockImplementation((rows: Record<string, unknown>[]) => {
+        insertedRows.push(...rows)
+        return {
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: rows.map((r, i) => ({ id: `cp-${i}`, ...r })), error: null }),
+          }),
+        }
+      }),
+    },
+  }
+  return {
+    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: USER_ID } } }) },
+    from: vi.fn().mockImplementation((table: string) => tables[table] ?? {}),
+    _insertedRows: insertedRows,
+  }
+}
+
+describe('getSkipCheckpoint', () => {
+  test('generates 2 tier-3 questions positioned right after question_count', async () => {
+    const client = clientForGetSkipCheckpoint({ questionCount: 8 })
+    vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
+
+    const result = await getSkipCheckpoint(SESS_ID)
+
+    expect(client._insertedRows.length).toBe(2)
+    expect(client._insertedRows.every(r => r.difficulty === 3)).toBe(true)
+    expect(client._insertedRows.map(r => r.position)).toEqual([8, 9])
+    expect((result as { questions: unknown[] }).questions.length).toBe(2)
+  })
+
+  test('idempotent: returns the existing checkpoint instead of regenerating', async () => {
+    const existing = [
+      { id: 'cp-0', prompt: 'Q', choices: [], difficulty: 3, position: 8 },
+      { id: 'cp-1', prompt: 'Q', choices: [], difficulty: 3, position: 9 },
+    ]
+    const client = clientForGetSkipCheckpoint({ questionCount: 8, existingCheckpoint: existing })
+    vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
+
+    const result = await getSkipCheckpoint(SESS_ID)
+
+    expect((result as { questions: unknown[] }).questions).toEqual(existing)
+    expect(client._insertedRows.length).toBe(0)
+  })
+
+  test('refuses when the session is already completed', async () => {
+    const client = clientForGetSkipCheckpoint({ sessionStatus: 'completed' })
+    vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
+
+    const result = await getSkipCheckpoint(SESS_ID)
+
+    expect((result as Record<string, unknown>).error).toBeTruthy()
+    expect(client._insertedRows.length).toBe(0)
+  })
+})
+
+function clientForResolveSkipCheckpoint({
+  checkpointCorrect = [true, true] as boolean[],
+  questionCount = 8,
+  sessionStatus = 'active' as 'active' | 'completed',
+  incomplete = false,
+} = {}) {
+  const rpc = makeRpc()
+  let upsertedTier: number | null = null
+  const progressUpsert = vi.fn().mockImplementation((row: { tier: number }) => {
+    upsertedTier = row.tier
+    return Promise.resolve({ data: null, error: null })
+  })
+  const sessionUpdate = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: null, error: null }) })
+
+  const answers = checkpointCorrect.map((was_correct, i) => ({
+    was_correct,
+    session_questions: { position: questionCount + i },
+  }))
+  const rows = incomplete ? answers.slice(0, 1) : answers
+
+  const tables: Record<string, unknown> = {
+    sessions: {
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { user_id: USER_ID, status: sessionStatus, skill_id: 'sk1', question_count: questionCount },
+            error: null,
+          }),
+        }),
+      }),
+      update: sessionUpdate,
+    },
+    session_answers: {
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ data: rows, error: null }),
+        }),
+      }),
+    },
+    user_skill_progress: { upsert: progressUpsert },
+  }
+  return {
+    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: USER_ID } } }) },
+    from: vi.fn().mockImplementation((table: string) => tables[table] ?? {}),
+    rpc,
+    _rpc: rpc,
+    _getUpsertedTier: () => upsertedTier,
+    _progressUpsert: progressUpsert,
+    _sessionUpdate: sessionUpdate,
+  }
+}
+
+describe('resolveSkipCheckpoint', () => {
+  test('both checkpoint questions correct: passes, jumps to tier 3, awards full session XP', async () => {
+    const client = clientForResolveSkipCheckpoint({ checkpointCorrect: [true, true] })
+    vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
+
+    const result = await resolveSkipCheckpoint(SESS_ID)
+
+    expect((result as Record<string, unknown>).passed).toBe(true)
+    expect(client._getUpsertedTier()).toBe(3)
+    expect(client._sessionUpdate).toHaveBeenCalled()
+    const xpCalls = client._rpc.mock.calls.filter((c: unknown[]) => c[0] === 'increment_xp')
+    expect(xpCalls.length).toBe(1)
+    expect((xpCalls[0][1] as { amount: number }).amount).toBe(50)
+  })
+
+  test('one checkpoint question wrong: fails, no tier upsert, session left untouched', async () => {
+    const client = clientForResolveSkipCheckpoint({ checkpointCorrect: [true, false] })
+    vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
+
+    const result = await resolveSkipCheckpoint(SESS_ID)
+
+    expect((result as Record<string, unknown>).passed).toBe(false)
+    expect(client._progressUpsert).not.toHaveBeenCalled()
+    expect(client._sessionUpdate).not.toHaveBeenCalled()
+    const xpCalls = client._rpc.mock.calls.filter((c: unknown[]) => c[0] === 'increment_xp')
+    expect(xpCalls.length).toBe(0)
+  })
+
+  test('checkpoint not finished yet: returns an error, no side effects', async () => {
+    const client = clientForResolveSkipCheckpoint({ incomplete: true })
+    vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
+
+    const result = await resolveSkipCheckpoint(SESS_ID)
+
+    expect((result as Record<string, unknown>).error).toBeTruthy()
+    expect(client._progressUpsert).not.toHaveBeenCalled()
+    expect(client._sessionUpdate).not.toHaveBeenCalled()
   })
 })
 

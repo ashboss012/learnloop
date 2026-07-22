@@ -4,16 +4,17 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { dismissCheckin } from '@/app/actions/checkin'
 import { SKILL_ICONS, SKILL_COLORS } from '@/lib/skillDisplay'
-import type { SkillActivity } from '@/app/actions/checkin'
 
 interface Props {
-  sessionsCompleted: number
+  skillName: string
+  slug: string
   questionsAnswered: number
-  overallAccuracy: number | null
-  skills: SkillActivity[]
+  correctCount: number
+  accuracy: number | null
+  xpEarned: number
 }
 
-export default function CheckinCard({ sessionsCompleted, questionsAnswered, overallAccuracy, skills }: Props) {
+export default function CheckinCard({ skillName, slug, questionsAnswered, correctCount, accuracy, xpEarned }: Props) {
   const router = useRouter()
   const [dismissed, setDismissed] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -27,48 +28,24 @@ export default function CheckinCard({ sessionsCompleted, questionsAnswered, over
     router.refresh()
   }
 
-  const hasActivity = questionsAnswered > 0
-
   return (
     <div className="rounded-3xl p-5 mb-6 bg-white border-2" style={{ borderColor: 'var(--border)' }}>
       <div className="flex items-center gap-2 mb-3">
         <span className="text-2xl">📋</span>
-        <h2 className="font-black text-lg">Your 3-Day Check-In</h2>
+        <h2 className="font-black text-lg">Last Session Recap</h2>
       </div>
 
-      {hasActivity ? (
-        <>
-          <p className="text-sm font-semibold text-gray-600 mb-4">
-            {sessionsCompleted} session{sessionsCompleted === 1 ? '' : 's'} · {questionsAnswered} question{questionsAnswered === 1 ? '' : 's'}
-            {overallAccuracy !== null && ` · ${overallAccuracy}% accuracy`}
-          </p>
-          <div className="space-y-2 mb-4">
-            {skills.map(skill => (
-              <div key={skill.skillId} className="flex items-center gap-3 rounded-xl p-2.5" style={{ background: 'var(--bg)' }}>
-                <span style={{ fontSize: 22 }}>{SKILL_ICONS[skill.slug] ?? '📐'}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="font-black text-sm truncate" style={{ color: SKILL_COLORS[skill.slug] ?? 'var(--text)' }}>
-                    {skill.name}
-                  </div>
-                  <div className="text-xs font-semibold text-gray-500">
-                    {skill.questionsAnswered} answered{skill.accuracy !== null && ` · ${skill.accuracy}%`}
-                  </div>
-                </div>
-                <span
-                  className="text-xs font-black rounded-full px-2 py-0.5 shrink-0"
-                  style={{ background: 'white', color: SKILL_COLORS[skill.slug] ?? 'var(--primary)' }}
-                >
-                  Lv {skill.tier}
-                </span>
-              </div>
-            ))}
+      <div className="flex items-center gap-3 rounded-xl p-3 mb-4" style={{ background: 'var(--bg)' }}>
+        <span style={{ fontSize: 26 }}>{SKILL_ICONS[slug] ?? '📐'}</span>
+        <div className="flex-1 min-w-0">
+          <div className="font-black text-base truncate" style={{ color: SKILL_COLORS[slug] ?? 'var(--text)' }}>
+            {skillName}
           </div>
-        </>
-      ) : (
-        <p className="text-sm font-semibold text-gray-600 mb-4">
-          No practice the last few days — ready for a fresh start? 💪
-        </p>
-      )}
+          <div className="text-xs font-semibold text-gray-500">
+            {correctCount}/{questionsAnswered} correct{accuracy !== null && ` · ${accuracy}%`} · +{xpEarned} XP
+          </div>
+        </div>
+      </div>
 
       <button
         onClick={handleDismiss}

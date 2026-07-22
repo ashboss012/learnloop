@@ -3,13 +3,13 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { gradeAnswer } from '@/app/actions/session'
-import { completeDiagnostic } from '@/app/actions/diagnostic'
+import { completeDiagnostic, getDiagnosticRound2 } from '@/app/actions/diagnostic'
 import Mascot from '@/components/Mascot'
 
 interface Choice { label: string; value: string }
 interface Question { id: string; prompt: string; choices: Choice[] | null; difficulty: number; position: number }
 
-type Phase = 'question' | 'feedback' | 'complete'
+type Phase = 'question' | 'feedback' | 'loading' | 'complete'
 
 interface FeedbackState {
   correct: boolean
@@ -21,13 +21,17 @@ interface FeedbackState {
 interface Props {
   sessionId: string
   subject: string
-  questions: Question[]
+  totalQuestions: number
+  initialQuestions: Question[]
 }
 
+const SUBJECT_TITLE: Record<string, string> = { math: 'Math Placement Exam', english: 'English Quick Check-In' }
 const SUBJECT_LABEL: Record<string, string> = { math: 'Math', english: 'English' }
 
-export default function DiagnosticRunner({ sessionId, subject, questions }: Props) {
+export default function DiagnosticRunner({ sessionId, subject, totalQuestions, initialQuestions }: Props) {
   const router = useRouter()
+  const [questions, setQuestions] = useState<Question[]>(initialQuestions)
+  const [round2Fetched, setRound2Fetched] = useState(false)
   const [index, setIndex] = useState(0)
   const [selected, setSelected] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<FeedbackState | null>(null)
@@ -35,9 +39,8 @@ export default function DiagnosticRunner({ sessionId, subject, questions }: Prop
   const [xpEarned, setXpEarned] = useState(0)
 
   const question = questions[index]
-  const total = questions.length
-  const isLast = index >= total - 1
-  const progressPct = Math.round((index / total) * 100)
+  const isLast = index >= totalQuestions - 1
+  const progressPct = Math.round((index / totalQuestions) * 100)
 
   async function handleChoice(value: string) {
     if (phase !== 'question' || selected) return
@@ -55,7 +58,17 @@ export default function DiagnosticRunner({ sessionId, subject, questions }: Prop
       setPhase('complete')
       return
     }
-    setIndex(i => i + 1)
+
+    const nextIndex = index + 1
+    if (nextIndex >= questions.length && subject === 'math' && !round2Fetched) {
+      setPhase('loading')
+      const res = await getDiagnosticRound2(sessionId)
+      if ('error' in res) { router.push('/dashboard'); return }
+      setQuestions(prev => [...prev, ...res.questions])
+      setRound2Fetched(true)
+    }
+
+    setIndex(nextIndex)
     setSelected(null)
     setFeedback(null)
     setPhase('question')
@@ -84,85 +97,96 @@ export default function DiagnosticRunner({ sessionId, subject, questions }: Prop
             />
           </div>
           <span className="text-sm font-black tabular-nums" style={{ color: 'var(--muted)', minWidth: '3.5rem', textAlign: 'right' }}>
-            {index + 1}/{total}
+            {index + 1}/{totalQuestions}
           </span>
         </div>
       </div>
 
       <div className="max-w-lg mx-auto w-full px-5 pt-5 pb-2">
         <span className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
-          {SUBJECT_LABEL[subject] ?? subject} Quick Check-In
+          {SUBJECT_TITLE[subject] ?? `${SUBJECT_LABEL[subject] ?? subject} Quick Check-In`}
         </span>
       </div>
 
       <div className="flex-1 max-w-lg mx-auto w-full px-4 flex flex-col" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
-        <div
-          className="rounded-3xl p-6 mb-5 font-black leading-snug"
-          style={{ background: 'white', border: '2px solid var(--border)', fontSize: 'clamp(1.25rem, 5vw, 1.75rem)', minHeight: 110 }}
-        >
-          {question.prompt}
-        </div>
-
-        <div className="space-y-3 flex-1">
-          {question.choices?.map(choice => {
-            let bg = 'white', border = 'var(--border)', textColor = 'var(--text)'
-            if (phase === 'feedback' && feedback) {
-              if (choice.value === feedback.correctAnswer) { bg = '#dcfce7'; border = 'var(--correct)'; textColor = '#166534' }
-              else if (choice.value === feedback.chosen && !feedback.correct) { bg = '#fee2e2'; border = 'var(--wrong)'; textColor = '#991b1b' }
-            }
-            return (
-              <button
-                key={choice.value}
-                onClick={() => handleChoice(choice.value)}
-                disabled={phase === 'feedback'}
-                className="w-full text-left rounded-2xl font-bold transition-colors"
-                style={{
-                  background: bg,
-                  border: `2.5px solid ${border}`,
-                  color: textColor,
-                  fontSize: 'clamp(1rem, 4vw, 1.125rem)',
-                  padding: '14px 20px',
-                  minHeight: 56,
-                  cursor: phase === 'feedback' ? 'default' : 'pointer',
-                }}
-              >
-                {choice.label}
-              </button>
-            )
-          })}
-        </div>
-
-        {phase === 'feedback' && feedback && (
-          <div className="mt-5">
-            <div
-              className="rounded-3xl p-5 mb-4"
-              style={{
-                background: feedback.correct ? '#dcfce7' : '#fee2e2',
-                animation: feedback.correct ? 'pop 0.4s ease-out' : 'shake 0.4s ease-in-out',
-              }}
-            >
-              <p className="font-black text-xl mb-1" style={{ color: feedback.correct ? '#166534' : '#991b1b' }}>
-                {feedback.correct ? '✅ Correct!' : '❌ Not quite!'}
-              </p>
-              {!feedback.correct && (
-                <p className="font-semibold text-base mt-1" style={{ color: '#991b1b' }}>
-                  The answer is <strong>{feedback.correctAnswer}</strong>
-                </p>
-              )}
-              <p className="text-sm font-semibold mt-2 text-gray-700 leading-relaxed">{feedback.explanation}</p>
-            </div>
-            <style>{`
-              @keyframes pop { 0% { transform: scale(0.9); opacity: 0; } 60% { transform: scale(1.03); opacity: 1; } 100% { transform: scale(1); } }
-              @keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
-            `}</style>
-            <button
-              onClick={handleContinue}
-              className="w-full rounded-2xl font-black text-white transition-all active:scale-95"
-              style={{ background: 'var(--primary)', fontSize: '1.25rem', padding: '16px 24px', minHeight: 60 }}
-            >
-              {isLast ? "Let's go! 🎉" : 'Continue →'}
-            </button>
+        {phase === 'loading' && (
+          <div className="flex-1 flex items-center justify-center">
+            <div style={{ width: 48, height: 48, border: '5px solid #e5e7eb', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
+        )}
+
+        {(phase === 'question' || phase === 'feedback') && question && (
+          <>
+            <div
+              className="rounded-3xl p-6 mb-5 font-black leading-snug"
+              style={{ background: 'white', border: '2px solid var(--border)', fontSize: 'clamp(1.25rem, 5vw, 1.75rem)', minHeight: 110 }}
+            >
+              {question.prompt}
+            </div>
+
+            <div className="space-y-3 flex-1">
+              {question.choices?.map(choice => {
+                let bg = 'white', border = 'var(--border)', textColor = 'var(--text)'
+                if (phase === 'feedback' && feedback) {
+                  if (choice.value === feedback.correctAnswer) { bg = '#dcfce7'; border = 'var(--correct)'; textColor = '#166534' }
+                  else if (choice.value === feedback.chosen && !feedback.correct) { bg = '#fee2e2'; border = 'var(--wrong)'; textColor = '#991b1b' }
+                }
+                return (
+                  <button
+                    key={choice.value}
+                    onClick={() => handleChoice(choice.value)}
+                    disabled={phase === 'feedback'}
+                    className="w-full text-left rounded-2xl font-bold transition-colors"
+                    style={{
+                      background: bg,
+                      border: `2.5px solid ${border}`,
+                      color: textColor,
+                      fontSize: 'clamp(1rem, 4vw, 1.125rem)',
+                      padding: '14px 20px',
+                      minHeight: 56,
+                      cursor: phase === 'feedback' ? 'default' : 'pointer',
+                    }}
+                  >
+                    {choice.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            {phase === 'feedback' && feedback && (
+              <div className="mt-5">
+                <div
+                  className="rounded-3xl p-5 mb-4"
+                  style={{
+                    background: feedback.correct ? '#dcfce7' : '#fee2e2',
+                    animation: feedback.correct ? 'pop 0.4s ease-out' : 'shake 0.4s ease-in-out',
+                  }}
+                >
+                  <p className="font-black text-xl mb-1" style={{ color: feedback.correct ? '#166534' : '#991b1b' }}>
+                    {feedback.correct ? '✅ Correct!' : '❌ Not quite!'}
+                  </p>
+                  {!feedback.correct && (
+                    <p className="font-semibold text-base mt-1" style={{ color: '#991b1b' }}>
+                      The answer is <strong>{feedback.correctAnswer}</strong>
+                    </p>
+                  )}
+                  <p className="text-sm font-semibold mt-2 text-gray-700 leading-relaxed">{feedback.explanation}</p>
+                </div>
+                <style>{`
+                  @keyframes pop { 0% { transform: scale(0.9); opacity: 0; } 60% { transform: scale(1.03); opacity: 1; } 100% { transform: scale(1); } }
+                  @keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+                `}</style>
+                <button
+                  onClick={handleContinue}
+                  className="w-full rounded-2xl font-black text-white transition-all active:scale-95"
+                  style={{ background: 'var(--primary)', fontSize: '1.25rem', padding: '16px 24px', minHeight: 60 }}
+                >
+                  {isLast ? "Let's go! 🎉" : 'Continue →'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

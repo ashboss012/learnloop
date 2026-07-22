@@ -25,6 +25,7 @@ export interface SessionQuestion {
   choices: Choice[] | null
   difficulty: number
   position: number
+  passage_text: string | null
   // answer and explanation are NOT included — server only
 }
 

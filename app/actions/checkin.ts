@@ -2,89 +2,70 @@
 
 import { createClient } from '@/lib/supabase/server'
 
-const CHECKIN_INTERVAL_MS = 3 * 24 * 60 * 60 * 1000
-
-export interface SkillActivity {
-  skillId: string
-  name: string
+export interface SessionRecap {
+  due: true
+  skillName: string
   slug: string
   questionsAnswered: number
+  correctCount: number
   accuracy: number | null
-  tier: number
+  xpEarned: number
 }
-
 type NotDue = { due: false }
-type Due = {
-  due: true
-  sessionsCompleted: number
-  questionsAnswered: number
-  overallAccuracy: number | null
-  skills: SkillActivity[]
-}
 
-type AnswerRow = { was_correct: boolean; session_questions: { skill_id: string } | { skill_id: string }[] | null }
+type AnswerRow = { was_correct: boolean; session_questions: { position: number } | { position: number }[] | null }
 
-export async function getCheckinData(): Promise<NotDue | Due> {
+// A "check-in" is a recap of the single most recently completed practice
+// session, shown once. last_checkin_at doubles as "last dismissed at" -
+// due whenever a completed session exists more recent than that timestamp
+// (or last_checkin_at is null, i.e. never dismissed).
+export async function getCheckinData(): Promise<NotDue | SessionRecap> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { due: false }
 
   const { data: profile } = await supabase.from('users').select('last_checkin_at').eq('id', user.id).single()
   const lastCheckin = profile?.last_checkin_at ? new Date(profile.last_checkin_at) : null
-  const now = new Date()
-  if (lastCheckin && now.getTime() - lastCheckin.getTime() < CHECKIN_INTERVAL_MS) {
-    return { due: false }
-  }
 
-  const windowStart = new Date(now.getTime() - CHECKIN_INTERVAL_MS).toISOString()
+  const { data: session } = await supabase
+    .from('sessions')
+    .select('id, xp_earned, question_count, completed_at, skills(name, slug)')
+    .eq('user_id', user.id)
+    .eq('kind', 'practice')
+    .eq('status', 'completed')
+    .order('completed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (!session || !session.completed_at) return { due: false }
+  if (lastCheckin && new Date(session.completed_at).getTime() <= lastCheckin.getTime()) return { due: false }
 
-  const [{ data: sessions }, { data: answers }, { data: progress }, { data: skills }] = await Promise.all([
-    supabase.from('sessions').select('status, completed_at').eq('user_id', user.id).eq('kind', 'practice').gte('completed_at', windowStart),
-    supabase.from('session_answers').select('was_correct, session_questions(skill_id)').eq('attempt_number', 1).gte('answered_at', windowStart),
-    supabase.from('user_skill_progress').select('skill_id, tier').eq('user_id', user.id),
-    supabase.from('skills').select('id, name, slug'),
-  ])
+  const { data: answers } = await supabase
+    .from('session_answers')
+    .select('was_correct, session_questions(position)')
+    .eq('session_id', session.id)
+    .eq('attempt_number', 1)
 
-  const sessionsCompleted = (sessions ?? []).filter(s => s.status === 'completed').length
+  // Scope to the session's required questions - excludes any skip-ahead
+  // checkpoint attempt, which lives past question_count.
+  const required = ((answers ?? []) as AnswerRow[]).filter(a => {
+    const sq = a.session_questions
+    const position = Array.isArray(sq) ? sq[0]?.position : sq?.position
+    return (position ?? -1) < session.question_count
+  })
+  const correctCount = required.filter(a => a.was_correct).length
+  const questionsAnswered = required.length
 
-  const bySkill = new Map<string, { correct: number; total: number }>()
-  let totalCorrect = 0
-  let totalCount = 0
-  for (const row of (answers ?? []) as AnswerRow[]) {
-    totalCount++
-    if (row.was_correct) totalCorrect++
-    const sq = row.session_questions
-    const skillId = Array.isArray(sq) ? sq[0]?.skill_id : sq?.skill_id
-    if (!skillId) continue
-    const entry = bySkill.get(skillId) ?? { correct: 0, total: 0 }
-    entry.total++
-    if (row.was_correct) entry.correct++
-    bySkill.set(skillId, entry)
-  }
-
-  const tierBySkill = new Map((progress ?? []).map(p => [p.skill_id, p.tier]))
-  const skillsById = new Map((skills ?? []).map(s => [s.id, s]))
-
-  const skillActivity: SkillActivity[] = Array.from(bySkill.entries())
-    .map(([skillId, stats]) => {
-      const skill = skillsById.get(skillId)
-      return {
-        skillId,
-        name: skill?.name ?? 'Unknown',
-        slug: skill?.slug ?? '',
-        questionsAnswered: stats.total,
-        accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : null,
-        tier: tierBySkill.get(skillId) ?? 1,
-      }
-    })
-    .sort((a, b) => b.questionsAnswered - a.questionsAnswered)
+  const skill = session.skills as unknown as { name: string; slug: string } | { name: string; slug: string }[] | null
+  const skillInfo = Array.isArray(skill) ? skill[0] : skill
 
   return {
     due: true,
-    sessionsCompleted,
-    questionsAnswered: totalCount,
-    overallAccuracy: totalCount > 0 ? Math.round((totalCorrect / totalCount) * 100) : null,
-    skills: skillActivity,
+    skillName: skillInfo?.name ?? 'Unknown',
+    slug: skillInfo?.slug ?? '',
+    questionsAnswered,
+    correctCount,
+    accuracy: questionsAnswered > 0 ? Math.round((correctCount / questionsAnswered) * 100) : null,
+    xpEarned: session.xp_earned ?? 0,
   }
 }
 

@@ -17,7 +17,8 @@ export default async function DiagnosticPage({ params }: Props) {
     <DiagnosticRunner
       sessionId={sessionId}
       subject={result.subject}
-      questions={result.questions}
+      totalQuestions={result.questionCount}
+      initialQuestions={result.questions}
     />
   )
 }
