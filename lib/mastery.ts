@@ -36,6 +36,7 @@ const GRADE_BANDS: Record<string, (grade: number) => Tier> = {
   'english-punctuation':              grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
   'english-capitalization':           grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
   'english-plurals':                  grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
+  'english-vocabulary':               grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
 }
 
 export function startingTier(slug: string, grade: number): Tier {

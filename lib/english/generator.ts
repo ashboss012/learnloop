@@ -249,6 +249,74 @@ function genPlurals(tier: number): GeneratedQuestion {
   }
 }
 
+// Vocabulary - docs/03: "Ground definitions in a known word list for the
+// grade so the model is not inventing meanings." This bank IS that known
+// list - hand-authored and hand-verified, same trust model as every other
+// bank in this file. Three question types per docs/03: definition match,
+// fill in the blank, synonym or antonym.
+const VOCAB_BANK: { word: string; definition: string; synonym: string; antonym: string; sentence: string; tier: 1 | 2 | 3 }[] = [
+  { word: 'happy', definition: 'feeling pleased or glad', synonym: 'joyful', antonym: 'sad', sentence: 'She felt ___ when she won the race.', tier: 1 },
+  { word: 'quick', definition: 'moving or acting fast', synonym: 'fast', antonym: 'slow', sentence: 'The rabbit was ___ across the field.', tier: 1 },
+  { word: 'big', definition: 'large in size', synonym: 'huge', antonym: 'small', sentence: 'The elephant is a ___ animal.', tier: 1 },
+  { word: 'brave', definition: 'not afraid of danger', synonym: 'courageous', antonym: 'fearful', sentence: 'The firefighter was ___ when she ran into the building.', tier: 1 },
+  { word: 'kind', definition: 'friendly and caring toward others', synonym: 'gentle', antonym: 'mean', sentence: 'It was ___ of him to share his lunch.', tier: 1 },
+  { word: 'loud', definition: 'making a lot of noise', synonym: 'noisy', antonym: 'quiet', sentence: 'The thunder was so ___ it woke everyone up.', tier: 1 },
+  { word: 'enormous', definition: 'extremely large in size', synonym: 'gigantic', antonym: 'tiny', sentence: 'The blue whale is an ___ animal.', tier: 2 },
+  { word: 'curious', definition: 'eager to learn or know something', synonym: 'inquisitive', antonym: 'indifferent', sentence: 'The ___ cat explored every corner of the house.', tier: 2 },
+  { word: 'furious', definition: 'extremely angry', synonym: 'enraged', antonym: 'calm', sentence: 'Dad was ___ when he saw the broken window.', tier: 2 },
+  { word: 'ancient', definition: 'very old, from long ago', synonym: 'antique', antonym: 'modern', sentence: 'We saw ___ ruins on our trip.', tier: 2 },
+  { word: 'delighted', definition: 'very pleased and happy', synonym: 'thrilled', antonym: 'disappointed', sentence: 'She was ___ to receive the gift.', tier: 2 },
+  { word: 'exhausted', definition: 'extremely tired', synonym: 'weary', antonym: 'energetic', sentence: 'After the long hike, we were completely ___.', tier: 2 },
+  { word: 'reluctant', definition: 'unwilling and hesitant', synonym: 'hesitant', antonym: 'eager', sentence: 'He was ___ to try the new food at first.', tier: 3 },
+  { word: 'magnificent', definition: 'extremely beautiful or impressive', synonym: 'splendid', antonym: 'ordinary', sentence: 'The view from the mountain was ___.', tier: 3 },
+  { word: 'persistent', definition: 'continuing firmly despite difficulty', synonym: 'determined', antonym: 'quitting', sentence: 'She was ___ in practicing until she learned to ride a bike.', tier: 3 },
+  { word: 'cautious', definition: 'careful to avoid danger or mistakes', synonym: 'careful', antonym: 'reckless', sentence: 'Be ___ when crossing a busy street.', tier: 3 },
+  { word: 'generous', definition: 'willing to give and share freely', synonym: 'giving', antonym: 'selfish', sentence: 'The ___ neighbor gave cookies to everyone on the block.', tier: 3 },
+  { word: 'timid', definition: 'shy and easily frightened', synonym: 'shy', antonym: 'bold', sentence: 'The ___ puppy hid behind the couch.', tier: 3 },
+]
+
+function genVocabulary(tier: number): GeneratedQuestion {
+  const pool = VOCAB_BANK.filter(w => w.tier === tier)
+  const entry = pool[randInt(0, pool.length - 1)]
+  const others = shuffle(VOCAB_BANK.filter(w => w.word !== entry.word))
+  const qType = randInt(1, 3)
+
+  if (qType === 1) {
+    const distractors = others.slice(0, 3).map(o => o.definition)
+    return {
+      prompt: `What does "${entry.word}" mean?`,
+      choices: buildChoices(entry.definition, distractors),
+      answer: entry.definition,
+      explanation: `"${entry.word}" means ${entry.definition}.`,
+      type: 'multiple_choice',
+    }
+  }
+
+  if (qType === 2) {
+    const distractors = shuffle(pool.filter(w => w.word !== entry.word)).slice(0, 3).map(o => o.word)
+    return {
+      prompt: entry.sentence,
+      choices: buildChoices(entry.word, distractors),
+      answer: entry.word,
+      explanation: `"${entry.word}" fits because it means ${entry.definition}.`,
+      type: 'multiple_choice',
+    }
+  }
+
+  const askSynonym = Math.random() < 0.5
+  const correct = askSynonym ? entry.synonym : entry.antonym
+  const distractors = others.slice(0, 3).map(o => askSynonym ? o.synonym : o.antonym)
+  return {
+    prompt: `Which word means the ${askSynonym ? 'same as' : 'opposite of'} "${entry.word}"?`,
+    choices: buildChoices(correct, distractors),
+    answer: correct,
+    explanation: askSynonym
+      ? `"${correct}" is a synonym for "${entry.word}" - they mean almost the same thing.`
+      : `"${correct}" is an antonym for "${entry.word}" - it means the opposite.`,
+    type: 'multiple_choice',
+  }
+}
+
 export function generateQuestion(slug: string, tier: number): GeneratedQuestion {
   switch (slug) {
     case 'english-parts-of-speech':          return genPartsOfSpeech(tier)
@@ -257,6 +325,7 @@ export function generateQuestion(slug: string, tier: number): GeneratedQuestion 
     case 'english-punctuation':              return genPunctuation(tier)
     case 'english-capitalization':           return genCapitalization(tier)
     case 'english-plurals':                  return genPlurals(tier)
+    case 'english-vocabulary':               return genVocabulary(tier)
     default:                                 return genPartsOfSpeech(tier)
   }
 }

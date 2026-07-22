@@ -283,3 +283,66 @@ describe('genPlurals', () => {
     })
   }
 })
+
+// ── Vocabulary ────────────────────────────────────────────────────────────────
+
+const VOCAB_BANK: { word: string; definition: string; synonym: string; antonym: string; sentence: string; tier: 1 | 2 | 3 }[] = [
+  { word: 'happy', definition: 'feeling pleased or glad', synonym: 'joyful', antonym: 'sad', sentence: 'She felt ___ when she won the race.', tier: 1 },
+  { word: 'quick', definition: 'moving or acting fast', synonym: 'fast', antonym: 'slow', sentence: 'The rabbit was ___ across the field.', tier: 1 },
+  { word: 'big', definition: 'large in size', synonym: 'huge', antonym: 'small', sentence: 'The elephant is a ___ animal.', tier: 1 },
+  { word: 'brave', definition: 'not afraid of danger', synonym: 'courageous', antonym: 'fearful', sentence: 'The firefighter was ___ when she ran into the building.', tier: 1 },
+  { word: 'kind', definition: 'friendly and caring toward others', synonym: 'gentle', antonym: 'mean', sentence: 'It was ___ of him to share his lunch.', tier: 1 },
+  { word: 'loud', definition: 'making a lot of noise', synonym: 'noisy', antonym: 'quiet', sentence: 'The thunder was so ___ it woke everyone up.', tier: 1 },
+  { word: 'enormous', definition: 'extremely large in size', synonym: 'gigantic', antonym: 'tiny', sentence: 'The blue whale is an ___ animal.', tier: 2 },
+  { word: 'curious', definition: 'eager to learn or know something', synonym: 'inquisitive', antonym: 'indifferent', sentence: 'The ___ cat explored every corner of the house.', tier: 2 },
+  { word: 'furious', definition: 'extremely angry', synonym: 'enraged', antonym: 'calm', sentence: 'Dad was ___ when he saw the broken window.', tier: 2 },
+  { word: 'ancient', definition: 'very old, from long ago', synonym: 'antique', antonym: 'modern', sentence: 'We saw ___ ruins on our trip.', tier: 2 },
+  { word: 'delighted', definition: 'very pleased and happy', synonym: 'thrilled', antonym: 'disappointed', sentence: 'She was ___ to receive the gift.', tier: 2 },
+  { word: 'exhausted', definition: 'extremely tired', synonym: 'weary', antonym: 'energetic', sentence: 'After the long hike, we were completely ___.', tier: 2 },
+  { word: 'reluctant', definition: 'unwilling and hesitant', synonym: 'hesitant', antonym: 'eager', sentence: 'He was ___ to try the new food at first.', tier: 3 },
+  { word: 'magnificent', definition: 'extremely beautiful or impressive', synonym: 'splendid', antonym: 'ordinary', sentence: 'The view from the mountain was ___.', tier: 3 },
+  { word: 'persistent', definition: 'continuing firmly despite difficulty', synonym: 'determined', antonym: 'quitting', sentence: 'She was ___ in practicing until she learned to ride a bike.', tier: 3 },
+  { word: 'cautious', definition: 'careful to avoid danger or mistakes', synonym: 'careful', antonym: 'reckless', sentence: 'Be ___ when crossing a busy street.', tier: 3 },
+  { word: 'generous', definition: 'willing to give and share freely', synonym: 'giving', antonym: 'selfish', sentence: 'The ___ neighbor gave cookies to everyone on the block.', tier: 3 },
+  { word: 'timid', definition: 'shy and easily frightened', synonym: 'shy', antonym: 'bold', sentence: 'The ___ puppy hid behind the couch.', tier: 3 },
+]
+
+describe('genVocabulary', () => {
+  for (const tier of [1, 2, 3] as const) {
+    test(`tier ${tier}: ${SAMPLES} samples — correct definition, word, synonym, or antonym`, () => {
+      const questions = times(SAMPLES, () => generateQuestion('english-vocabulary', tier))
+      const seenTypes = new Set<string>()
+      for (const q of questions) {
+        const defMatch = q.prompt.match(/^What does "(\w+)" mean\?$/)
+        const synAntMatch = q.prompt.match(/^Which word means the (same as|opposite of) "(\w+)"\?$/)
+        const fillEntry = VOCAB_BANK.find(w => w.sentence === q.prompt)
+
+        if (defMatch) {
+          seenTypes.add('definition')
+          const word = defMatch[1]
+          const entry = VOCAB_BANK.find(w => w.word === word)
+          expect(entry, `unknown word "${word}"`).toBeTruthy()
+          expect(entry!.tier, `word "${word}" not from tier ${tier}`).toBe(tier)
+          expect(q.answer, `definition of "${word}"`).toBe(entry!.definition)
+        } else if (synAntMatch) {
+          seenTypes.add('synonym-antonym')
+          const relation = synAntMatch[1], word = synAntMatch[2]
+          const entry = VOCAB_BANK.find(w => w.word === word)
+          expect(entry, `unknown word "${word}"`).toBeTruthy()
+          expect(entry!.tier, `word "${word}" not from tier ${tier}`).toBe(tier)
+          const expected = relation === 'same as' ? entry!.synonym : entry!.antonym
+          expect(q.answer, `${relation} of "${word}"`).toBe(expected)
+        } else if (fillEntry) {
+          seenTypes.add('fill-blank')
+          expect(fillEntry.tier, `sentence "${q.prompt}" not from tier ${tier}`).toBe(tier)
+          expect(q.answer, `blank answer for "${q.prompt}"`).toBe(fillEntry.word)
+        } else {
+          throw new Error(`prompt format mismatch: "${q.prompt}"`)
+        }
+
+        assertChoiceInvariants(q, `vocab t${tier} "${q.prompt}"`)
+      }
+      expect(seenTypes.size, `500 samples should exercise all 3 question types at tier ${tier}`).toBe(3)
+    })
+  }
+})
