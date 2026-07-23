@@ -21,20 +21,21 @@ The valuable asset is the sequencing in my head as a Mathnasium instructor, how 
 
 Organize math into a tree of skills so the loop can pull from a specific skill and difficulty. Implemented shape (lib/math/generator.ts, supabase/migrations/001 + 005):
 
-- Multiplication (single digit, multi digit)
+- Multiplication (single digit, multi digit, up to 3-digit × 3-digit)
 - Division (basic, remainders)
-- Fractions (compare, add, subtract — like denominators)
-- Decimals (place value, compare, add)
-- Place Value (digit identification, digit value, up to hundred-thousands)
-- Rounding (nearest ten, hundred, thousand)
-- Addition (multi-digit, 2 to 4 digits)
-- Subtraction (multi-digit, 2 to 4 digits)
-- Factors & Multiples (identify a factor, identify a multiple, greatest common factor)
+- Fractions (compare, add, subtract — like denominators, then unlike denominators)
+- Decimals (place value, compare, add, subtract — 1 then 2 decimal places)
+- Place Value (digit identification, digit value, up to millions)
+- Rounding (nearest ten, hundred, thousand, ten-thousand, hundred-thousand)
+- Addition (multi-digit, 2 to 6 digits)
+- Subtraction (multi-digit, 2 to 6 digits)
+- Factors & Multiples (identify a factor, identify a multiple, greatest common factor, least common multiple)
 - Prime & Composite (classify a number)
-- Fraction Multiplication (unit fraction × whole, fraction × whole)
+- Fraction Multiplication (unit fraction × whole, fraction × whole, fraction × fraction)
 - Elapsed Time (minutes between two clock times)
+- Word Problems (single-step add/subtract/multiply/divide, then two-step chained problems)
 
-Each skill has 3 difficulty tiers driven by parameter ranges, seeded per-student from grade (lib/mastery.ts) and stepped adaptively per question (see 08).
+Each skill has 5 difficulty tiers driven by parameter ranges, seeded per-student from grade (lib/mastery.ts) and stepped adaptively per question (see 08).
 
 ## Question types
 
@@ -52,6 +53,5 @@ Effectively zero. Generation is code. If an LLM is used for phrasing it runs off
 
 ## Not in v1
 
-- Multi-step word problems — needs a real template/phrasing engine, not just number-swapping
 - Geometry, measurement (area/perimeter, angles), and line plots — need a rendered diagram, not just text
 - Anything requiring image generation

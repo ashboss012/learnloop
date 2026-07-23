@@ -77,13 +77,13 @@ Per-question results inside a session. Feeds future adaptivity.
 | attempts | How many tries |
 
 ### user_skill_progress
-Adaptive engine, first slice (see 08). Current tier per student per skill, stepped +-1 after each primary-pass question based on first-attempt correctness. Seeded from grade on first use (lib/mastery.ts). Implemented in supabase/migrations/004_user_skill_progress.sql.
+Adaptive engine (see 08). Current tier per student per skill, stepped +-1 after each primary-pass question based on first-attempt correctness. Seeded from grade on first use (lib/mastery.ts). Implemented in supabase/migrations/004_user_skill_progress.sql; tier range widened from 1-3 to 1-5 in 016_widen_tiers.sql.
 
 | Column | Notes |
 |--------|-------|
 | user_id | |
 | skill_id | |
-| tier | 1-3 |
+| tier | 1-5 |
 | updated_at | |
 
 ### streaks

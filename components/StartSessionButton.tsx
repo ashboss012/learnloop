@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { startSession } from '@/app/actions/session'
 import { startDiagnostic } from '@/app/actions/diagnostic'
+import { MAX_TIER } from '@/lib/mastery'
 
 interface Props {
   skill: { id: string; name: string; slug: string; subject: string }
@@ -77,7 +78,7 @@ export default function StartSessionButton({ skill, color, icon, tier, diagnosti
           <div
             className="absolute inset-0 rounded-full"
             style={{
-              background: `conic-gradient(${color} ${(tier / 3) * 360}deg, ${color}20 0deg)`,
+              background: `conic-gradient(${color} ${(tier / MAX_TIER) * 360}deg, ${color}20 0deg)`,
               WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
               mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
             }}

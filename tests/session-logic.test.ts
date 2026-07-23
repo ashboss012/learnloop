@@ -440,13 +440,13 @@ describe('getNextQuestion — adaptive tier stepping', () => {
     expect((client._insertedQuestions[0] as Record<string, unknown>).difficulty).toBe(2)
   })
 
-  test('tier is capped at 3', async () => {
-    const client = clientForGetNextQuestion({ wasCorrectFirstTry: true, currentTier: 3 })
+  test('tier is capped at 5 (MAX_TIER)', async () => {
+    const client = clientForGetNextQuestion({ wasCorrectFirstTry: true, currentTier: 5 })
     vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
 
     await getNextQuestion(SESS_ID, SQ_ID)
 
-    expect(client._getUpsertedTier()).toBe(3)
+    expect(client._getUpsertedTier()).toBe(5)
   })
 
   test('steps tier -1 on first-attempt-incorrect', async () => {
@@ -620,7 +620,7 @@ describe('completeSession — XP and streak (non-negotiables)', () => {
 })
 
 describe('completeSession — perfect-run skip-ahead reward', () => {
-  test('all first attempts correct, below Lv 3: reports perfect + leveledUp, upserts tier 3', async () => {
+  test('all first attempts correct, below Lv 5 (MAX_TIER): reports perfect + leveledUp, upserts tier 5', async () => {
     const client = clientForCompleteSession({
       firstAttempts: [true, true, true, true, true, true, true, true],
       questionCount: 8,
@@ -632,14 +632,14 @@ describe('completeSession — perfect-run skip-ahead reward', () => {
 
     expect((result as Record<string, unknown>).perfect).toBe(true)
     expect((result as Record<string, unknown>).leveledUp).toBe(true)
-    expect(client._getUpsertedTier()).toBe(3)
+    expect(client._getUpsertedTier()).toBe(5)
   })
 
-  test('already at Lv 3: perfect but not leveledUp, tier unchanged in the (still-fired) upsert', async () => {
+  test('already at Lv 5 (MAX_TIER): perfect but not leveledUp, tier unchanged in the (still-fired) upsert', async () => {
     const client = clientForCompleteSession({
       firstAttempts: [true, true, true, true, true, true, true, true],
       questionCount: 8,
-      currentTier: 3,
+      currentTier: 5,
     })
     vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
 
@@ -649,7 +649,7 @@ describe('completeSession — perfect-run skip-ahead reward', () => {
     expect((result as Record<string, unknown>).leveledUp).toBe(false)
     // Upsert still fires (it also carries the spaced-review date), just
     // without bumping a tier that's already at the cap.
-    expect(client._getUpsertedTier()).toBe(3)
+    expect(client._getUpsertedTier()).toBe(5)
   })
 
   test('one wrong first attempt: not perfect, tier unchanged, normal XP unaffected', async () => {
@@ -739,7 +739,7 @@ describe('completeSession — perfect-run skip-ahead reward', () => {
 
     expect((result as Record<string, unknown>).perfect).toBe(true)
     expect((result as Record<string, unknown>).leveledUp).toBe(true)
-    expect(upsertedTier).toBe(3)
+    expect(upsertedTier).toBe(5)
   })
 })
 
@@ -823,22 +823,22 @@ function clientForGetSkipCheckpoint({
 }
 
 describe('getSkipCheckpoint', () => {
-  test('generates 2 tier-3 questions positioned right after question_count', async () => {
+  test('generates 2 max-tier (5) questions positioned right after question_count', async () => {
     const client = clientForGetSkipCheckpoint({ questionCount: 8 })
     vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
 
     const result = await getSkipCheckpoint(SESS_ID)
 
     expect(client._insertedRows.length).toBe(2)
-    expect(client._insertedRows.every(r => r.difficulty === 3)).toBe(true)
+    expect(client._insertedRows.every(r => r.difficulty === 5)).toBe(true)
     expect(client._insertedRows.map(r => r.position)).toEqual([8, 9])
     expect((result as { questions: unknown[] }).questions.length).toBe(2)
   })
 
   test('idempotent: returns the existing checkpoint instead of regenerating', async () => {
     const existing = [
-      { id: 'cp-0', prompt: 'Q', choices: [], difficulty: 3, position: 8 },
-      { id: 'cp-1', prompt: 'Q', choices: [], difficulty: 3, position: 9 },
+      { id: 'cp-0', prompt: 'Q', choices: [], difficulty: 5, position: 8 },
+      { id: 'cp-1', prompt: 'Q', choices: [], difficulty: 5, position: 9 },
     ]
     const client = clientForGetSkipCheckpoint({ questionCount: 8, existingCheckpoint: existing })
     vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
@@ -914,14 +914,14 @@ function clientForResolveSkipCheckpoint({
 }
 
 describe('resolveSkipCheckpoint', () => {
-  test('both checkpoint questions correct: passes, jumps to tier 3, awards full session XP', async () => {
+  test('both checkpoint questions correct: passes, jumps to tier 5 (MAX_TIER), awards full session XP', async () => {
     const client = clientForResolveSkipCheckpoint({ checkpointCorrect: [true, true] })
     vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
 
     const result = await resolveSkipCheckpoint(SESS_ID)
 
     expect((result as Record<string, unknown>).passed).toBe(true)
-    expect(client._getUpsertedTier()).toBe(3)
+    expect(client._getUpsertedTier()).toBe(5)
     expect(client._sessionUpdate).toHaveBeenCalled()
     expect(client._getUpsertedRow()?.due_for_review_at).toBe(daysFromNowUTC(4))
     const xpCalls = client._rpc.mock.calls.filter((c: unknown[]) => c[0] === 'increment_xp')
@@ -970,14 +970,14 @@ describe('startSession — session length (non-negotiable #2)', () => {
 
 describe('startSession — tier resolution', () => {
   test('seeds a tier from grade and persists it when no prior progress exists', async () => {
-    // grade 5 for math-multiplication -> startingTier() = 3 (see lib/mastery.ts)
+    // grade 5 for math-multiplication (band centered at grade 4) -> startingTier() = 4 (see lib/mastery.ts)
     const client = clientForStartSession({ existingTier: null, grade: 5, skillSlug: 'math-multiplication' })
     vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
 
     await startSession('skill-id-1')
 
-    expect(client._getUpsertedProgress()?.tier).toBe(3)
-    expect((client._insertedQuestions[0] as Record<string, unknown>).difficulty).toBe(3)
+    expect(client._getUpsertedProgress()?.tier).toBe(4)
+    expect((client._insertedQuestions[0] as Record<string, unknown>).difficulty).toBe(4)
   })
 
   test('reuses an existing progress row instead of reseeding', async () => {

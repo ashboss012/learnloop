@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { generateQuestion } from '@/lib/questionGenerator'
-import { startingTier, type Tier } from '@/lib/mastery'
+import { startingTier, MAX_TIER, type Tier } from '@/lib/mastery'
 import { revalidatePath } from 'next/cache'
 
 const SESSION_LENGTH = 8
@@ -12,9 +12,9 @@ const READING_COMPREHENSION_SLUG = 'english-reading-comprehension'
 
 // Skip-ahead checkpoint: the client (SessionRunner) decides when to offer
 // it (after enough correct answers in a row); these just generate/resolve
-// the 2 tier-3 gate questions once offered.
+// the 2 max-tier gate questions once offered.
 const CHECKPOINT_SIZE = 2
-const CHECKPOINT_TIER = 3
+const CHECKPOINT_TIER = MAX_TIER
 
 // Spaced review (docs/08, signal 2): a skill missed in its last session
 // resurfaces on the dashboard much sooner than one just aced. Simple fixed
@@ -240,7 +240,7 @@ export async function getNextQuestion(sessionId: string, lastSessionQuestionId: 
     .eq('skill_id', session.skill_id)
     .single()
   const currentTier = progress?.tier ?? 1
-  const nextTier = wasCorrectFirstTry ? Math.min(3, currentTier + 1) : Math.max(1, currentTier - 1)
+  const nextTier = wasCorrectFirstTry ? Math.min(MAX_TIER, currentTier + 1) : Math.max(1, currentTier - 1)
 
   await supabase.from('user_skill_progress').upsert(
     { user_id: user.id, skill_id: session.skill_id, tier: nextTier, updated_at: new Date().toISOString() },
@@ -360,13 +360,13 @@ export async function completeSession(sessionId: string) {
     .eq('skill_id', session.skill_id)
     .single()
   const currentTier = progress?.tier ?? 1
-  const leveledUp = perfect && currentTier < 3
+  const leveledUp = perfect && currentTier < MAX_TIER
   const now = new Date().toISOString()
   await supabase.from('user_skill_progress').upsert(
     {
       user_id: user.id,
       skill_id: session.skill_id,
-      tier: leveledUp ? 3 : currentTier,
+      tier: leveledUp ? MAX_TIER : currentTier,
       updated_at: now,
       last_practiced_at: now,
       due_for_review_at: reviewDueDate(perfect ? PERFECT_REVIEW_DAYS : MISS_REVIEW_DAYS),
@@ -388,7 +388,7 @@ export async function completeSession(sessionId: string) {
 }
 
 // Skip-ahead checkpoint: offered mid-session to a student who's clearly
-// acing it. Two tier-3 questions, generated past the session's normal
+// acing it. Two max-tier questions, generated past the session's normal
 // question_count so they never collide with primary-pass positions.
 // Passing both finishes the session early with full credit; failing
 // either leaves the session untouched so the client can resume normally.
@@ -481,7 +481,7 @@ export async function resolveSkipCheckpoint(sessionId: string) {
     {
       user_id: user.id,
       skill_id: session.skill_id,
-      tier: 3,
+      tier: MAX_TIER,
       updated_at: now,
       last_practiced_at: now,
       due_for_review_at: reviewDueDate(PERFECT_REVIEW_DAYS),

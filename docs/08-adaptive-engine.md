@@ -1,6 +1,6 @@
 # 08. Adaptive Engine
 
-**Status: first slice shipped.** Per-skill tier (1-3) per student, seeded from grade (lib/mastery.ts) and stepped +-1 after every primary-pass question based on first-attempt correctness (app/actions/session.ts getNextQuestion, schema in supabase/migrations/004_user_skill_progress.sql). This is signal 1 below ("per-skill mastery"), simplified to a single recent-question nudge instead of a rolling accuracy window. Signal 2 (spaced review across sessions) and interleaving are still not built — read this whole doc before extending either.
+**Status: both signals shipped.** Per-skill tier (1-5, widened from an original 1-3 scale — supabase/migrations/016_widen_tiers.sql) per student, seeded from grade (lib/mastery.ts) and stepped +-1 after every primary-pass question based on first-attempt correctness (app/actions/session.ts getNextQuestion). This is signal 1 below ("per-skill mastery"), simplified to a single recent-question nudge instead of a rolling accuracy window. Signal 2 (spaced review across sessions) is also shipped: completeSession sets due_for_review_at, sooner after a miss and further out after a perfect run. Interleaving is still not built — read this whole doc before extending it.
 
 This file exists so that when you extend it, you start from real learning science instead of the pop version.
 

@@ -178,7 +178,7 @@ describe('getDiagnosticRound2', () => {
     }
   }
 
-  test('correct round-1 skills get tier 3, wrong get tier 1', async () => {
+  test('correct round-1 skills get tier 5 (MAX_TIER), wrong get tier 1', async () => {
     const correctBySkillIndex = MATH_SKILLS.map((_, i) => i % 2 === 0) // even indices correct
     const client = clientForRound2({ correctBySkillIndex })
     vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
@@ -189,7 +189,7 @@ describe('getDiagnosticRound2', () => {
     for (let i = 0; i < MATH_SKILLS.length; i++) {
       const row = client._insertedRows.find(r => r.skill_id === MATH_SKILLS[i].id)
       expect(row, `no round-2 row for skill ${i}`).toBeTruthy()
-      expect(row!.difficulty, `wrong tier for skill ${i}`).toBe(correctBySkillIndex[i] ? 3 : 1)
+      expect(row!.difficulty, `wrong tier for skill ${i}`).toBe(correctBySkillIndex[i] ? 5 : 1)
       expect(row!.position, `wrong position for skill ${i}`).toBe(12 + i)
     }
   })
@@ -253,9 +253,9 @@ describe('completeDiagnostic — tier placement', () => {
   }
 
   test.each([
-    ['round1 correct, round2 correct -> tier 3', true, true, 3],
-    ['round1 correct, round2 wrong -> tier 2', true, false, 2],
-    ['round1 wrong, round2 correct -> tier 2', false, true, 2],
+    ['round1 correct, round2 correct -> tier 5', true, true, 5],
+    ['round1 correct, round2 wrong -> tier 3', true, false, 3],
+    ['round1 wrong, round2 correct -> tier 3', false, true, 3],
     ['round1 wrong, round2 wrong -> tier 1', false, false, 1],
   ])('math 2-round combining: %s', async (_label, r1, r2, expectedTier) => {
     const client = clientForComplete('math', [
@@ -271,7 +271,7 @@ describe('completeDiagnostic — tier placement', () => {
     expect(upsert!.tier).toBe(expectedTier)
   })
 
-  test('english single-round: correct -> tier 3, wrong -> tier 1', async () => {
+  test('english single-round: correct -> tier 5 (MAX_TIER), wrong -> tier 1', async () => {
     const client = clientForComplete('english', [
       { skill_id: 'skill-x', position: 0, was_correct: true },
       { skill_id: 'skill-y', position: 1, was_correct: false },
@@ -280,7 +280,7 @@ describe('completeDiagnostic — tier placement', () => {
 
     await completeDiagnostic(SESS_ID)
 
-    expect(client._upserts.find(u => u.skill_id === 'skill-x')!.tier).toBe(3)
+    expect(client._upserts.find(u => u.skill_id === 'skill-x')!.tier).toBe(5)
     expect(client._upserts.find(u => u.skill_id === 'skill-y')!.tier).toBe(1)
   })
 })

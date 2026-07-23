@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { gradeAnswer, getNextQuestion, completeSession, getSkipCheckpoint, resolveSkipCheckpoint } from '@/app/actions/session'
+import { MAX_TIER } from '@/lib/mastery'
 import Mascot from '@/components/Mascot'
 
 interface Choice { label: string; value: string }
@@ -460,7 +461,7 @@ function CompletionScreen({
         {(leveledUp || skippedAhead) && (
           <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
             <span className="font-bold text-gray-600 text-lg">Skipped Ahead</span>
-            <span className="font-black text-2xl" style={{ color: 'var(--primary)' }}>🚀 Lv 3</span>
+            <span className="font-black text-2xl" style={{ color: 'var(--primary)' }}>🚀 Lv {MAX_TIER}</span>
           </div>
         )}
       </div>

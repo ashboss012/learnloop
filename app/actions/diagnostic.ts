@@ -2,12 +2,15 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { generateQuestion } from '@/lib/questionGenerator'
+import { MAX_TIER } from '@/lib/mastery'
 import { revalidatePath } from 'next/cache'
 
 // Round 1 always runs at a fixed medium tier - the point is reading his
 // natural level once per skill. Math gets a round 2 (see getDiagnosticRound2)
-// whose tier depends on round 1's result; English stays single-round.
-const DIAGNOSTIC_ROUND1_TIER = 2
+// whose tier depends on round 1's result; English stays single-round. This
+// is deliberately coarse (placements land on {1,3,5}, not every tier) - the
+// normal ±1 per-question stepping refines it during real practice.
+const DIAGNOSTIC_ROUND1_TIER = 3
 
 type DiagnosticColumn = 'math_diagnostic_done' | 'english_diagnostic_done'
 
@@ -156,7 +159,7 @@ export async function getDiagnosticRound2(sessionId: string) {
 
   const rows = mathSkills.map((skill, i) => {
     const wasCorrect = correctBySkill.get(skill.id) ?? false
-    const tier = wasCorrect ? 3 : 1
+    const tier = wasCorrect ? MAX_TIER : 1
     const q = generateQuestion(skill.slug, tier)
     return {
       session_id: sessionId,
@@ -209,7 +212,8 @@ export async function completeDiagnostic(sessionId: string) {
   }
 
   // Group by skill - English has 1 row per skill (binary), math has 2
-  // (round 1 + round 2), combined into a 3-way placement.
+  // (round 1 + round 2), combined into a placement on {1, 3, 5} - coarse
+  // by design, the normal ±1 per-question stepping refines it from there.
   const bySkill = new Map<string, { position: number; correct: boolean }[]>()
   for (const row of (answers ?? []) as AnswerRow[]) {
     const sq = row.session_questions
@@ -225,12 +229,12 @@ export async function completeDiagnostic(sessionId: string) {
     results.sort((a, b) => a.position - b.position)
     let tier: number
     if (results.length === 1) {
-      tier = results[0].correct ? 3 : 1
+      tier = results[0].correct ? MAX_TIER : 1
     } else {
       const [r1, r2] = results
-      if (r1.correct && r2.correct) tier = 3
-      else if (r1.correct && !r2.correct) tier = 2
-      else if (!r1.correct && r2.correct) tier = 2
+      if (r1.correct && r2.correct) tier = MAX_TIER
+      else if (r1.correct && !r2.correct) tier = 3
+      else if (!r1.correct && r2.correct) tier = 3
       else tier = 1
     }
     await supabase.from('user_skill_progress').upsert(

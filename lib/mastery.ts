@@ -9,38 +9,56 @@
 //  - multiplication/division fluency: expected by end of grade 4
 //  - comparing like-denominator fractions: grade 3; add/subtract: grade 4-5
 //  - decimal place value: grade 4; compare/add decimals: grade 5
+//
+// Widened from a 1-3 to a 1-5 scale so students beyond the old grade-5+
+// ceiling actually get differentiated difficulty instead of all landing
+// on the same max tier. Each skill keeps its previous "center" grade (the
+// old tier2/tier3 boundary) as the new middle tier and spreads two more
+// steps on each side - a mechanical widen, not new pedagogical judgment.
 
-export type Tier = 1 | 2 | 3
+export type Tier = 1 | 2 | 3 | 4 | 5
+export const MAX_TIER: Tier = 5
+
+function bandCenteredAt(center: number): (grade: number) => Tier {
+  return grade => {
+    if (grade <= center - 2) return 1
+    if (grade === center - 1) return 2
+    if (grade === center) return 3
+    if (grade === center + 1) return 4
+    return 5
+  }
+}
 
 const GRADE_BANDS: Record<string, (grade: number) => Tier> = {
-  'math-multiplication':          grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
-  'math-division':                grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
-  'math-fractions':                grade => (grade <= 3 ? 1 : grade <= 4 ? 2 : 3),
-  'math-decimals':                grade => (grade <= 4 ? 1 : grade === 5 ? 2 : 3),
-  'math-place-value':             grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
-  'math-rounding':                grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
-  'math-addition':                grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
-  'math-subtraction':             grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
+  'math-multiplication':          bandCenteredAt(4),
+  'math-division':                bandCenteredAt(4),
+  'math-fractions':               bandCenteredAt(4),
+  'math-decimals':                bandCenteredAt(5),
+  'math-place-value':             bandCenteredAt(4),
+  'math-rounding':                bandCenteredAt(4),
+  'math-addition':                bandCenteredAt(4),
+  'math-subtraction':             bandCenteredAt(4),
   // Factors, primality, and multiplying fractions by whole numbers are
-  // CCSS 5th-grade content — a 4th grader should start at tier 1 here
-  // even though tier 1 for arithmetic fluency skills above is grade <= 3.
-  'math-factors-multiples':       grade => (grade <= 4 ? 1 : grade === 5 ? 2 : 3),
-  'math-prime-composite':         grade => (grade <= 4 ? 1 : grade === 5 ? 2 : 3),
-  'math-fraction-multiplication': grade => (grade <= 4 ? 1 : grade === 5 ? 2 : 3),
-  'math-elapsed-time':            grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
-  // Grammar fluency skills - same grade-appropriate band as the
-  // arithmetic-fluency math skills above.
-  'english-parts-of-speech':          grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
-  'english-subject-verb-agreement':   grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
-  'english-tenses':                   grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
-  'english-punctuation':              grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
-  'english-capitalization':           grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
-  'english-plurals':                  grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
-  'english-vocabulary':               grade => (grade <= 3 ? 1 : grade === 4 ? 2 : 3),
+  // CCSS 5th-grade content - centered one grade later than the core
+  // arithmetic-fluency skills above.
+  'math-factors-multiples':       bandCenteredAt(5),
+  'math-prime-composite':         bandCenteredAt(5),
+  'math-fraction-multiplication': bandCenteredAt(5),
+  'math-elapsed-time':            bandCenteredAt(4),
+  'math-word-problems':           bandCenteredAt(4),
+  // Grammar/vocabulary fluency skills - same grade-appropriate band as
+  // the arithmetic-fluency math skills above.
+  'english-parts-of-speech':          bandCenteredAt(4),
+  'english-subject-verb-agreement':   bandCenteredAt(4),
+  'english-tenses':                   bandCenteredAt(4),
+  'english-punctuation':              bandCenteredAt(4),
+  'english-capitalization':           bandCenteredAt(4),
+  'english-plurals':                  bandCenteredAt(4),
+  'english-vocabulary':               bandCenteredAt(4),
 }
 
 export function startingTier(slug: string, grade: number): Tier {
   const band = GRADE_BANDS[slug]
   if (!band) return 1
-  return Math.min(3, Math.max(1, band(grade))) as Tier
+  return Math.min(MAX_TIER, Math.max(1, band(grade))) as Tier
 }

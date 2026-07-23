@@ -1,4 +1,5 @@
 import type { GeneratedQuestion, Choice } from '@/types'
+import { generateWordProblem } from './wordProblems'
 
 export type { GeneratedQuestion }
 
@@ -46,6 +47,7 @@ function buildChoices(correct: string, distractors: string[]): Choice[] {
 }
 
 function gcd(a: number, b: number): number { return b === 0 ? a : gcd(b, a % b) }
+function lcm(a: number, b: number): number { return (a * b) / gcd(a, b) }
 
 function simplify(n: number, d: number): [number, number] {
   const g = gcd(Math.abs(n), d)
@@ -61,7 +63,9 @@ function genMultiplication(tier: number): GeneratedQuestion {
   let a: number, b: number
   if (tier === 1) { a = randInt(2, 9); b = randInt(2, 9) }
   else if (tier === 2) { a = randInt(10, 99); b = randInt(2, 9) }
-  else { a = randInt(10, 49); b = randInt(10, 49) }
+  else if (tier === 3) { a = randInt(10, 49); b = randInt(10, 49) }
+  else if (tier === 4) { a = randInt(100, 499); b = randInt(10, 49) }
+  else { a = randInt(100, 299); b = randInt(100, 299) }
   const correct = a * b
   return {
     prompt: `What is ${a} × ${b}?`,
@@ -77,9 +81,13 @@ function genMultiplication(tier: number): GeneratedQuestion {
 
 // Division
 function genDivision(tier: number): GeneratedQuestion {
-  const divisor = randInt(2, 9)
-  const quotient = randInt(2, tier === 1 ? 9 : 15)
-  const remainder = tier === 3 ? randInt(1, divisor - 1) : 0
+  const divisor = tier <= 2 ? randInt(2, 9) : tier <= 4 ? randInt(2, 12) : randInt(2, 15)
+  const quotient = tier === 1 ? randInt(2, 9)
+    : tier === 2 ? randInt(2, 15)
+    : tier === 3 ? randInt(2, 15)
+    : tier === 4 ? randInt(2, 25)
+    : randInt(2, 40)
+  const remainder = tier >= 3 ? randInt(1, divisor - 1) : 0
   const dividend = divisor * quotient + remainder
   if (remainder === 0) {
     return {
@@ -141,19 +149,60 @@ function genFractions(tier: number): GeneratedQuestion {
       type: 'multiple_choice',
     }
   }
-  const denom = randInt(3, 12)
-  const n1 = randInt(2, denom - 1)
-  const n2 = randInt(1, n1 - 1)
-  const rawN = n1 - n2
-  const [sn, sd] = simplify(rawN, denom)
+  if (tier === 3) {
+    const denom = randInt(3, 12)
+    const n1 = randInt(2, denom - 1)
+    const n2 = randInt(1, n1 - 1)
+    const rawN = n1 - n2
+    const [sn, sd] = simplify(rawN, denom)
+    const correct = frac(sn, sd)
+    return {
+      prompt: `${n1}/${denom} − ${n2}/${denom} = ?`,
+      choices: buildChoices(correct, [
+        frac(n1 + n2, denom), frac(rawN + 1, denom), frac(n1, denom),
+      ]),
+      answer: correct,
+      explanation: `Subtract numerators (same denominator): ${n1}−${n2}=${rawN}, so ${rawN}/${denom}${correct !== `${rawN}/${denom}` ? ` = ${correct}` : ''}.`,
+      type: 'multiple_choice',
+    }
+  }
+  // Tiers 4-5: unlike denominators, a real step up (CCSS grade 5) - needs
+  // a common denominator instead of just combining numerators.
+  const d1 = randInt(2, 6)
+  let d2 = randInt(2, 6)
+  while (d2 === d1) d2 = randInt(2, 6)
+  const n1 = randInt(1, d1 - 1)
+  const n2 = randInt(1, d2 - 1)
+  const common = lcm(d1, d2)
+  const scaledN1 = n1 * (common / d1)
+  const scaledN2 = n2 * (common / d2)
+  if (tier === 4) {
+    const rawN = scaledN1 + scaledN2
+    const [sn, sd] = simplify(rawN, common)
+    const correct = frac(sn, sd)
+    return {
+      prompt: `${n1}/${d1} + ${n2}/${d2} = ?`,
+      choices: buildChoices(correct, [
+        frac(n1 + n2, d1 + d2), frac(scaledN1 + scaledN2 + 1, common), frac(scaledN1, common),
+      ]),
+      answer: correct,
+      explanation: `Common denominator ${common}: ${n1}/${d1} = ${scaledN1}/${common}, ${n2}/${d2} = ${scaledN2}/${common}. Add: ${scaledN1}+${scaledN2}=${rawN}, so ${rawN}/${common}${correct !== `${rawN}/${common}` ? ` = ${correct}` : ''}.`,
+      type: 'multiple_choice',
+    }
+  }
+  const bigFirst = scaledN1 >= scaledN2
+  const [bigN, bigD, bigScaled] = bigFirst ? [n1, d1, scaledN1] : [n2, d2, scaledN2]
+  const [smallN, smallD, smallScaled] = bigFirst ? [n2, d2, scaledN2] : [n1, d1, scaledN1]
+  const rawN = bigScaled - smallScaled
+  const [sn, sd] = simplify(rawN, common)
   const correct = frac(sn, sd)
   return {
-    prompt: `${n1}/${denom} − ${n2}/${denom} = ?`,
+    prompt: `${bigN}/${bigD} − ${smallN}/${smallD} = ?`,
     choices: buildChoices(correct, [
-      frac(n1 + n2, denom), frac(rawN + 1, denom), frac(n1, denom),
+      frac(bigScaled + smallScaled, common), frac(rawN + 1, common), frac(bigScaled, common),
     ]),
     answer: correct,
-    explanation: `Subtract numerators (same denominator): ${n1}−${n2}=${rawN}, so ${rawN}/${denom}${correct !== `${rawN}/${denom}` ? ` = ${correct}` : ''}.`,
+    explanation: `Common denominator ${common}. Subtract: ${bigScaled}−${smallScaled}=${rawN}, so ${rawN}/${common}${correct !== `${rawN}/${common}` ? ` = ${correct}` : ''}.`,
     type: 'multiple_choice',
   }
 }
@@ -189,28 +238,61 @@ function genDecimals(tier: number): GeneratedQuestion {
       type: 'multiple_choice',
     }
   }
-  const af = parseFloat((randInt(1, 9) + randInt(0, 9) * 0.1).toFixed(1))
-  const bf = parseFloat((randInt(1, 9) + randInt(0, 9) * 0.1).toFixed(1))
-  const sum = parseFloat((af + bf).toFixed(1))
+  if (tier === 3) {
+    const af = parseFloat((randInt(1, 9) + randInt(0, 9) * 0.1).toFixed(1))
+    const bf = parseFloat((randInt(1, 9) + randInt(0, 9) * 0.1).toFixed(1))
+    const sum = parseFloat((af + bf).toFixed(1))
+    return {
+      prompt: `${af} + ${bf} = ?`,
+      choices: buildChoices(String(sum), [
+        String(parseFloat((sum + 0.1).toFixed(1))),
+        String(parseFloat((sum - 0.1).toFixed(1))),
+        String(parseFloat(Math.abs(af - bf).toFixed(1))),
+      ]),
+      answer: String(sum),
+      explanation: `Line up the decimal points: ${af} + ${bf} = ${sum}.`,
+      type: 'multiple_choice',
+    }
+  }
+  // Tiers 4-5: two decimal places instead of one.
+  const af = parseFloat((randInt(1, 9) + randInt(0, 9) * 0.1 + randInt(0, 9) * 0.01).toFixed(2))
+  const bf = parseFloat((randInt(1, 9) + randInt(0, 9) * 0.1 + randInt(0, 9) * 0.01).toFixed(2))
+  if (tier === 4) {
+    const sum = parseFloat((af + bf).toFixed(2))
+    return {
+      prompt: `${af} + ${bf} = ?`,
+      choices: buildChoices(String(sum), [
+        String(parseFloat((sum + 0.01).toFixed(2))),
+        String(parseFloat((sum - 0.01).toFixed(2))),
+        String(parseFloat(Math.abs(af - bf).toFixed(2))),
+      ]),
+      answer: String(sum),
+      explanation: `Line up the decimal points: ${af} + ${bf} = ${sum}.`,
+      type: 'multiple_choice',
+    }
+  }
+  const bigger = af >= bf ? af : bf
+  const smaller = af >= bf ? bf : af
+  const diff = parseFloat((bigger - smaller).toFixed(2))
   return {
-    prompt: `${af} + ${bf} = ?`,
-    choices: buildChoices(String(sum), [
-      String(parseFloat((sum + 0.1).toFixed(1))),
-      String(parseFloat((sum - 0.1).toFixed(1))),
-      String(parseFloat(Math.abs(af - bf).toFixed(1))),
+    prompt: `${bigger} − ${smaller} = ?`,
+    choices: buildChoices(String(diff), [
+      String(parseFloat((diff + 0.01).toFixed(2))),
+      String(parseFloat((diff - 0.01).toFixed(2))),
+      String(parseFloat((bigger + smaller).toFixed(2))),
     ]),
-    answer: String(sum),
-    explanation: `Line up the decimal points: ${af} + ${bf} = ${sum}.`,
+    answer: String(diff),
+    explanation: `Line up the decimal points: ${bigger} − ${smaller} = ${diff}.`,
     type: 'multiple_choice',
   }
 }
 
 // Place Value
 function genPlaceValue(tier: number): GeneratedQuestion {
-  const digits = tier === 1 ? 3 : tier === 2 ? 5 : 6
+  const digits = [3, 4, 5, 6, 7][tier - 1] ?? 7
   const num = randInt(Math.pow(10, digits - 1), Math.pow(10, digits) - 1)
-  const places = ['ones', 'tens', 'hundreds', 'thousands', 'ten thousands', 'hundred thousands']
-  const placeValues = [1, 10, 100, 1000, 10000, 100000]
+  const places = ['ones', 'tens', 'hundreds', 'thousands', 'ten thousands', 'hundred thousands', 'millions']
+  const placeValues = [1, 10, 100, 1000, 10000, 100000, 1000000]
   const idx = randInt(0, digits - 1)
   const digit = Math.floor(num / placeValues[idx]) % 10
   const display = num.toLocaleString('en-US')
@@ -241,12 +323,13 @@ function genPlaceValue(tier: number): GeneratedQuestion {
 
 // Rounding
 function genRounding(tier: number): GeneratedQuestion {
-  const roundTo = tier === 1 ? 10 : tier === 2 ? 100 : 1000
-  const digits = tier === 1 ? 2 : tier === 2 ? 3 : 4
+  const roundTo = [10, 100, 1000, 10000, 100000][tier - 1] ?? 100000
+  const digits = [2, 3, 4, 5, 6][tier - 1] ?? 6
   const num = randInt(Math.pow(10, digits - 1), Math.pow(10, digits) - 1)
   const correct = Math.round(num / roundTo) * roundTo
   const display = num.toLocaleString('en-US')
-  const label = roundTo === 10 ? 'ten' : roundTo === 100 ? 'hundred' : 'thousand'
+  const label = roundTo === 10 ? 'ten' : roundTo === 100 ? 'hundred' : roundTo === 1000 ? 'thousand'
+    : roundTo === 10000 ? 'ten thousand' : 'hundred thousand'
   return {
     prompt: `Round ${display} to the nearest ${label}.`,
     choices: buildChoices(String(correct), [
@@ -260,7 +343,7 @@ function genRounding(tier: number): GeneratedQuestion {
 
 // Multi-digit Addition
 function genAddition(tier: number): GeneratedQuestion {
-  const digits = tier === 1 ? 2 : tier === 2 ? 3 : 4
+  const digits = [2, 3, 4, 5, 6][tier - 1] ?? 6
   const min = Math.pow(10, digits - 1)
   const max = Math.pow(10, digits) - 1
   const a = randInt(min, max)
@@ -277,7 +360,7 @@ function genAddition(tier: number): GeneratedQuestion {
 
 // Multi-digit Subtraction
 function genSubtraction(tier: number): GeneratedQuestion {
-  const digits = tier === 1 ? 2 : tier === 2 ? 3 : 4
+  const digits = [2, 3, 4, 5, 6][tier - 1] ?? 6
   const min = Math.pow(10, digits - 1)
   const max = Math.pow(10, digits) - 1
   let a = randInt(min, max)
@@ -322,8 +405,32 @@ function genFactorsMultiples(tier: number): GeneratedQuestion {
       type: 'multiple_choice',
     }
   }
-  const a = randInt(8, 24)
-  const b = randInt(8, 24)
+  if (tier === 3) {
+    const a = randInt(8, 24)
+    const b = randInt(8, 24)
+    const correct = gcd(a, b)
+    return {
+      prompt: `What is the greatest common factor of ${a} and ${b}?`,
+      choices: buildChoices(String(correct), [String(Math.min(a, b)), String(correct * 2), String(Math.max(1, correct - 1))]),
+      answer: String(correct),
+      explanation: `The greatest common factor of ${a} and ${b} is ${correct}.`,
+      type: 'multiple_choice',
+    }
+  }
+  if (tier === 4) {
+    const a = randInt(4, 12)
+    const b = randInt(4, 12)
+    const correct = lcm(a, b)
+    return {
+      prompt: `What is the least common multiple of ${a} and ${b}?`,
+      choices: buildChoices(String(correct), [String(a * b), String(correct + Math.min(a, b)), String(Math.max(a, b))]),
+      answer: String(correct),
+      explanation: `The least common multiple of ${a} and ${b} is ${correct}.`,
+      type: 'multiple_choice',
+    }
+  }
+  const a = randInt(15, 60)
+  const b = randInt(15, 60)
   const correct = gcd(a, b)
   return {
     prompt: `What is the greatest common factor of ${a} and ${b}?`,
@@ -342,7 +449,7 @@ function isPrime(n: number): boolean {
 }
 
 function genPrimeComposite(tier: number): GeneratedQuestion {
-  const max = tier === 1 ? 20 : tier === 2 ? 50 : 100
+  const max = [20, 50, 100, 200, 500][tier - 1] ?? 500
   const askPrime = Math.random() < 0.5
   const primes: number[] = []
   const composites: number[] = []
@@ -392,17 +499,36 @@ function genFractionMultiplication(tier: number): GeneratedQuestion {
       type: 'multiple_choice',
     }
   }
-  const denom = randInt(3, 8)
-  const num = randInt(2, denom - 1)
-  const whole = randInt(2, 9)
-  const rawN = num * whole
-  const [sn, sd] = simplify(rawN, denom)
+  if (tier === 3) {
+    const denom = randInt(3, 8)
+    const num = randInt(2, denom - 1)
+    const whole = randInt(2, 9)
+    const rawN = num * whole
+    const [sn, sd] = simplify(rawN, denom)
+    const correct = frac(sn, sd)
+    return {
+      prompt: `${num}/${denom} × ${whole} = ?`,
+      choices: buildChoices(correct, [frac(rawN, denom), frac(rawN + 1, denom), frac(whole, denom)]),
+      answer: correct,
+      explanation: `${num}/${denom} × ${whole} = ${rawN}/${denom}${correct !== frac(rawN, denom) ? ` = ${correct}` : ''}.`,
+      type: 'multiple_choice',
+    }
+  }
+  // Tiers 4-5: fraction times fraction, not just fraction times whole.
+  const maxDenom = tier === 4 ? 8 : 12
+  const d1 = randInt(2, maxDenom)
+  const d2 = randInt(2, maxDenom)
+  const n1 = randInt(1, d1 - 1)
+  const n2 = randInt(1, d2 - 1)
+  const rawN = n1 * n2
+  const rawD = d1 * d2
+  const [sn, sd] = simplify(rawN, rawD)
   const correct = frac(sn, sd)
   return {
-    prompt: `${num}/${denom} × ${whole} = ?`,
-    choices: buildChoices(correct, [frac(rawN, denom), frac(rawN + 1, denom), frac(whole, denom)]),
+    prompt: `${n1}/${d1} × ${n2}/${d2} = ?`,
+    choices: buildChoices(correct, [frac(rawN, rawD), frac(n1 + n2, d1 + d2), frac(rawN, d1)]),
     answer: correct,
-    explanation: `${num}/${denom} × ${whole} = ${rawN}/${denom}${correct !== frac(rawN, denom) ? ` = ${correct}` : ''}.`,
+    explanation: `Multiply numerators and denominators: (${n1}×${n2})/(${d1}×${d2}) = ${rawN}/${rawD}${correct !== frac(rawN, rawD) ? ` = ${correct}` : ''}.`,
     type: 'multiple_choice',
   }
 }
@@ -418,7 +544,11 @@ function formatTime(totalMinutes: number): string {
 
 function genElapsedTime(tier: number): GeneratedQuestion {
   const startMinutes = tier === 1 ? randInt(6, 20) * 60 : randInt(6 * 60, 20 * 60 + 45)
-  const elapsed = tier === 1 ? randInt(1, 5) * 60 : tier === 2 ? randInt(1, 8) * 15 : randInt(15, 195)
+  const elapsed = tier === 1 ? randInt(1, 5) * 60
+    : tier === 2 ? randInt(1, 8) * 15
+    : tier === 3 ? randInt(15, 195)
+    : tier === 4 ? randInt(15, 240)
+    : randInt(15, 360)
   const endMinutes = startMinutes + elapsed
   const start = formatTime(startMinutes)
   const end = formatTime(endMinutes)
@@ -446,6 +576,7 @@ export function generateQuestion(slug: string, tier: number): GeneratedQuestion 
     case 'math-prime-composite':         return genPrimeComposite(tier)
     case 'math-fraction-multiplication': return genFractionMultiplication(tier)
     case 'math-elapsed-time':            return genElapsedTime(tier)
+    case 'math-word-problems':           return generateWordProblem(tier)
     default:                             return genMultiplication(tier)
   }
 }

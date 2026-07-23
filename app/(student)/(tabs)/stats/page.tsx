@@ -31,7 +31,7 @@ export default async function StatsPage() {
   ] = await Promise.all([
     supabase.from('users').select('grade').eq('id', userId).single(),
     supabase.from('streaks').select('current_streak, longest_streak').eq('user_id', userId).single(),
-    supabase.from('skills').select('id, name, slug').order('subject').order('difficulty_order'),
+    supabase.from('skills').select('id, name, slug, subject').order('subject').order('difficulty_order'),
     supabase.from('user_skill_progress').select('skill_id, tier').eq('user_id', userId),
     supabase.from('sessions').select('status, completed_at').eq('user_id', userId),
     supabase.from('session_answers').select('was_correct, session_questions(skill_id)').eq('attempt_number', 1),
@@ -97,12 +97,54 @@ export default async function StatsPage() {
         </div>
       </div>
 
+      <SkillStatsSection
+        title="Math"
+        skills={(skills ?? []).filter(s => s.subject === 'math')}
+        bySkill={bySkill}
+        tierBySkill={tierBySkill}
+        grade={grade}
+      />
+      <div className="mt-6">
+        <SkillStatsSection
+          title="English"
+          skills={(skills ?? []).filter(s => s.subject === 'english')}
+          bySkill={bySkill}
+          tierBySkill={tierBySkill}
+          grade={grade}
+        />
+      </div>
+    </div>
+  )
+}
+
+function StatCard({ label, value, icon }: { label: string; value: string | number; icon: string }) {
+  return (
+    <div className="rounded-2xl p-4 bg-white border-2" style={{ borderColor: 'var(--border)' }}>
+      <div className="text-2xl mb-1">{icon}</div>
+      <div className="font-black text-2xl">{value}</div>
+      <div className="text-xs font-bold text-gray-400">{label}</div>
+    </div>
+  )
+}
+
+function SkillStatsSection({
+  title, skills, bySkill, tierBySkill, grade,
+}: {
+  title: string
+  skills: { id: string; name: string; slug: string }[]
+  bySkill: Map<string, { correct: number; total: number }>
+  tierBySkill: Map<string, number>
+  grade: number
+}) {
+  if (skills.length === 0) return null
+  return (
+    <>
       <div className="mb-4">
         <span className="block w-8 h-1 rounded-full mb-2" style={{ background: 'var(--primary)' }} />
-        <h2 className="text-xl font-black">By Skill</h2>
+        <h2 className="text-xl font-black">{title}</h2>
       </div>
       <div className="space-y-3">
-        {skills?.map(skill => {
+        {skills.map(skill => {
           const s = bySkill.get(skill.id)
           const acc = s && s.total > 0 ? Math.round((s.correct / s.total) * 100) : null
           const tier = tierBySkill.get(skill.id) ?? startingTier(skill.slug, grade)
@@ -126,16 +168,6 @@ export default async function StatsPage() {
           )
         })}
       </div>
-    </div>
-  )
-}
-
-function StatCard({ label, value, icon }: { label: string; value: string | number; icon: string }) {
-  return (
-    <div className="rounded-2xl p-4 bg-white border-2" style={{ borderColor: 'var(--border)' }}>
-      <div className="text-2xl mb-1">{icon}</div>
-      <div className="font-black text-2xl">{value}</div>
-      <div className="text-xs font-bold text-gray-400">{label}</div>
-    </div>
+    </>
   )
 }

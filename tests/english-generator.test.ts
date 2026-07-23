@@ -27,18 +27,26 @@ function assertChoiceInvariants(q: ReturnType<typeof generateQuestion>, label: s
 
 // ── Parts of Speech ──────────────────────────────────────────────────────────
 
-const WORD_BANK: { word: string; pos: 'noun' | 'verb' | 'adjective' | 'adverb' }[] = [
-  { word: 'dog', pos: 'noun' }, { word: 'teacher', pos: 'noun' }, { word: 'city', pos: 'noun' },
-  { word: 'apple', pos: 'noun' }, { word: 'river', pos: 'noun' }, { word: 'friend', pos: 'noun' },
-  { word: 'school', pos: 'noun' }, { word: 'mountain', pos: 'noun' },
-  { word: 'run', pos: 'verb' }, { word: 'jump', pos: 'verb' }, { word: 'sing', pos: 'verb' },
-  { word: 'write', pos: 'verb' }, { word: 'swim', pos: 'verb' }, { word: 'laugh', pos: 'verb' },
-  { word: 'build', pos: 'verb' }, { word: 'read', pos: 'verb' },
-  { word: 'happy', pos: 'adjective' }, { word: 'blue', pos: 'adjective' }, { word: 'tall', pos: 'adjective' },
-  { word: 'quiet', pos: 'adjective' }, { word: 'brave', pos: 'adjective' }, { word: 'shiny', pos: 'adjective' },
-  { word: 'ancient', pos: 'adjective' }, { word: 'curious', pos: 'adjective' },
-  { word: 'quickly', pos: 'adverb' }, { word: 'silently', pos: 'adverb' }, { word: 'happily', pos: 'adverb' },
-  { word: 'carefully', pos: 'adverb' }, { word: 'loudly', pos: 'adverb' }, { word: 'bravely', pos: 'adverb' },
+const WORD_BANK: { word: string; pos: 'noun' | 'verb' | 'adjective' | 'adverb'; tier: 1 | 4 | 5 }[] = [
+  { word: 'dog', pos: 'noun', tier: 1 }, { word: 'teacher', pos: 'noun', tier: 1 }, { word: 'city', pos: 'noun', tier: 1 },
+  { word: 'apple', pos: 'noun', tier: 1 }, { word: 'river', pos: 'noun', tier: 1 }, { word: 'friend', pos: 'noun', tier: 1 },
+  { word: 'school', pos: 'noun', tier: 1 }, { word: 'mountain', pos: 'noun', tier: 1 },
+  { word: 'run', pos: 'verb', tier: 1 }, { word: 'jump', pos: 'verb', tier: 1 }, { word: 'sing', pos: 'verb', tier: 1 },
+  { word: 'write', pos: 'verb', tier: 1 }, { word: 'swim', pos: 'verb', tier: 1 }, { word: 'laugh', pos: 'verb', tier: 1 },
+  { word: 'build', pos: 'verb', tier: 1 }, { word: 'read', pos: 'verb', tier: 1 },
+  { word: 'happy', pos: 'adjective', tier: 1 }, { word: 'blue', pos: 'adjective', tier: 1 }, { word: 'tall', pos: 'adjective', tier: 1 },
+  { word: 'quiet', pos: 'adjective', tier: 1 }, { word: 'brave', pos: 'adjective', tier: 1 }, { word: 'shiny', pos: 'adjective', tier: 1 },
+  { word: 'ancient', pos: 'adjective', tier: 1 }, { word: 'curious', pos: 'adjective', tier: 1 },
+  { word: 'quickly', pos: 'adverb', tier: 1 }, { word: 'silently', pos: 'adverb', tier: 1 }, { word: 'happily', pos: 'adverb', tier: 1 },
+  { word: 'carefully', pos: 'adverb', tier: 1 }, { word: 'loudly', pos: 'adverb', tier: 1 }, { word: 'bravely', pos: 'adverb', tier: 1 },
+  { word: 'ecosystem', pos: 'noun', tier: 4 }, { word: 'metropolis', pos: 'noun', tier: 4 },
+  { word: 'construct', pos: 'verb', tier: 4 }, { word: 'analyze', pos: 'verb', tier: 4 },
+  { word: 'mysterious', pos: 'adjective', tier: 4 }, { word: 'vigilant', pos: 'adjective', tier: 4 },
+  { word: 'reluctantly', pos: 'adverb', tier: 4 }, { word: 'meticulously', pos: 'adverb', tier: 4 },
+  { word: 'phenomenon', pos: 'noun', tier: 5 }, { word: 'catastrophe', pos: 'noun', tier: 5 },
+  { word: 'orchestrate', pos: 'verb', tier: 5 }, { word: 'contemplate', pos: 'verb', tier: 5 },
+  { word: 'inevitable', pos: 'adjective', tier: 5 }, { word: 'elaborate', pos: 'adjective', tier: 5 },
+  { word: 'inadvertently', pos: 'adverb', tier: 5 }, { word: 'conscientiously', pos: 'adverb', tier: 5 },
 ]
 
 describe('genPartsOfSpeech', () => {
@@ -46,9 +54,11 @@ describe('genPartsOfSpeech', () => {
     1: ['noun', 'verb'],
     2: ['noun', 'verb', 'adjective'],
     3: ['noun', 'verb', 'adjective', 'adverb'],
+    4: ['noun', 'verb', 'adjective', 'adverb'],
+    5: ['noun', 'verb', 'adjective', 'adverb'],
   } as const
 
-  for (const tier of [1, 2, 3] as const) {
+  for (const tier of [1, 2, 3, 4, 5] as const) {
     test(`tier ${tier}: ${SAMPLES} samples — correct part of speech identified`, () => {
       const questions = times(SAMPLES, () => generateQuestion('english-parts-of-speech', tier))
       for (const q of questions) {
@@ -62,6 +72,7 @@ describe('genPartsOfSpeech', () => {
         const entry = WORD_BANK.find(w => w.word === q.answer)
         expect(entry, `"${q.answer}" not found in word bank`).toBeTruthy()
         expect(entry!.pos, `"${q.answer}" is not actually a ${askedPos}`).toBe(askedPos)
+        expect(entry!.tier, `"${q.answer}" (tier ${entry!.tier}) used above its unlock tier ${tier}`).toBeLessThanOrEqual(tier)
 
         assertChoiceInvariants(q, `pos t${tier} ${q.answer}`)
       }
@@ -82,6 +93,14 @@ const SVA_VERB_BANK: { base: string; singular: string; plural: string }[] = [
   { base: 'eat', singular: 'eats', plural: 'eat' },
   { base: 'watch', singular: 'watches', plural: 'watch' },
   { base: 'catch', singular: 'catches', plural: 'catch' },
+  { base: 'fly', singular: 'flies', plural: 'fly' },
+  { base: 'try', singular: 'tries', plural: 'try' },
+  { base: 'carry', singular: 'carries', plural: 'carry' },
+  { base: 'study', singular: 'studies', plural: 'study' },
+  { base: 'wash', singular: 'washes', plural: 'wash' },
+  { base: 'fix', singular: 'fixes', plural: 'fix' },
+  { base: 'mix', singular: 'mixes', plural: 'mix' },
+  { base: 'buzz', singular: 'buzzes', plural: 'buzz' },
 ]
 
 const SVA_SUBJECT_BANK: { text: string; takesBaseForm: boolean }[] = [
@@ -94,7 +113,9 @@ const SVA_SUBJECT_BANK: { text: string; takesBaseForm: boolean }[] = [
 ]
 
 describe('genSubjectVerbAgreement', () => {
-  for (const tier of [1, 2, 3] as const) {
+  const verbCountByTier = { 1: 6, 2: 10, 3: 10, 4: 14, 5: 18 } as const
+
+  for (const tier of [1, 2, 3, 4, 5] as const) {
     test(`tier ${tier}: ${SAMPLES} samples — correct verb form`, () => {
       const questions = times(SAMPLES, () => generateQuestion('english-subject-verb-agreement', tier))
       for (const q of questions) {
@@ -104,11 +125,11 @@ describe('genSubjectVerbAgreement', () => {
 
         const subject = SVA_SUBJECT_BANK.find(s => s.text === subjectText)
         expect(subject, `unknown subject "${subjectText}"`).toBeTruthy()
-        if (tier < 3) expect(subjectText, 'I/You should only appear at tier 3').not.toMatch(/^(I|You)$/)
+        if (tier < 3) expect(subjectText, 'I/You should only appear at tier >= 3').not.toMatch(/^(I|You)$/)
 
         const verb = SVA_VERB_BANK.find(v => v.base === verbBase)
         expect(verb, `unknown verb "${verbBase}"`).toBeTruthy()
-        if (tier === 1) expect(SVA_VERB_BANK.indexOf(verb!), 'tier 1 should only use the first 6 verbs').toBeLessThan(6)
+        expect(SVA_VERB_BANK.indexOf(verb!), `tier ${tier} verb pool exceeded`).toBeLessThan(verbCountByTier[tier])
 
         const expected = subject!.takesBaseForm ? verb!.plural : verb!.singular
         expect(q.answer, `"${subjectText}" + "${verbBase}"`).toBe(expected)
@@ -127,10 +148,16 @@ const TENSE_VERB_BANK: { base: string; past: string }[] = [
   { base: 'go', past: 'went' }, { base: 'run', past: 'ran' }, { base: 'eat', past: 'ate' },
   { base: 'see', past: 'saw' }, { base: 'write', past: 'wrote' }, { base: 'sing', past: 'sang' },
   { base: 'swim', past: 'swam' }, { base: 'give', past: 'gave' }, { base: 'take', past: 'took' },
+  { base: 'begin', past: 'began' }, { base: 'break', past: 'broke' },
+  { base: 'choose', past: 'chose' }, { base: 'drive', past: 'drove' },
+  { base: 'fly', past: 'flew' }, { base: 'freeze', past: 'froze' },
+  { base: 'steal', past: 'stole' }, { base: 'throw', past: 'threw' },
 ]
 
 describe('genTenses', () => {
-  for (const tier of [1, 2, 3] as const) {
+  const poolCountByTier = { 1: 6, 2: 15, 3: 15, 4: 19, 5: 23 } as const
+
+  for (const tier of [1, 2, 3, 4, 5] as const) {
     test(`tier ${tier}: ${SAMPLES} samples — correct tense conjugation`, () => {
       const questions = times(SAMPLES, () => generateQuestion('english-tenses', tier))
       for (const q of questions) {
@@ -142,13 +169,14 @@ describe('genTenses', () => {
           const base = forwardMatch[1]
           const entry = TENSE_VERB_BANK.find(v => v.base === base)
           expect(entry, `unknown base verb "${base}"`).toBeTruthy()
-          if (tier === 1) expect(TENSE_VERB_BANK.indexOf(entry!), 'tier 1 should only use the first 6 verbs').toBeLessThan(6)
+          expect(TENSE_VERB_BANK.indexOf(entry!), `tier ${tier} verb pool exceeded`).toBeLessThan(poolCountByTier[tier])
           expect(q.answer, `past tense of "${base}"`).toBe(entry!.past)
         } else {
-          expect(tier, 'reverse-direction question only appears at tier >= 2').toBeGreaterThanOrEqual(2)
+          expect(tier, 'reverse-direction question only appears at tier >= 3').toBeGreaterThanOrEqual(3)
           const past = reverseMatch![1]
           const entry = TENSE_VERB_BANK.find(v => v.past === past)
           expect(entry, `unknown past form "${past}"`).toBeTruthy()
+          expect(TENSE_VERB_BANK.indexOf(entry!), `tier ${tier} verb pool exceeded`).toBeLessThan(poolCountByTier[tier])
           expect(q.answer, `base form of "${past}"`).toBe(entry!.base)
         }
 
@@ -173,6 +201,19 @@ const PUNCTUATION_BANK: { sentence: string; correct: '.' | '?' | '!' }[] = [
   { sentence: 'We are going to the park', correct: '.' },
   { sentence: 'Why is the sky blue', correct: '?' },
   { sentence: 'Run, the bus is leaving', correct: '!' },
+]
+
+const COMMA_BANK: { correct: string; missing: string; tier: 4 | 5 }[] = [
+  { correct: 'I packed a hat, a scarf, and gloves.', missing: 'I packed a hat a scarf and gloves.', tier: 4 },
+  { correct: 'She bought apples, bananas, and grapes.', missing: 'She bought apples bananas and grapes.', tier: 4 },
+  { correct: 'We saw lions, tigers, and bears at the zoo.', missing: 'We saw lions tigers and bears at the zoo.', tier: 4 },
+  { correct: 'He likes soccer, basketball, and baseball.', missing: 'He likes soccer basketball and baseball.', tier: 4 },
+  { correct: 'The bag had pencils, erasers, and crayons.', missing: 'The bag had pencils erasers and crayons.', tier: 4 },
+  { correct: 'My friends are Sam, Ana, and Leo.', missing: 'My friends are Sam Ana and Leo.', tier: 4 },
+  { correct: 'We packed sandwiches, chips, fruit, and juice.', missing: 'We packed sandwiches chips fruit and juice.', tier: 5 },
+  { correct: 'The garden has roses, tulips, daisies, and lilies.', missing: 'The garden has roses tulips daisies and lilies.', tier: 5 },
+  { correct: 'Yesterday, we cleaned the house, washed the car, and mowed the lawn.', missing: 'Yesterday we cleaned the house washed the car and mowed the lawn.', tier: 5 },
+  { correct: 'Before dinner, she set the table, lit a candle, and poured water.', missing: 'Before dinner she set the table lit a candle and poured water.', tier: 5 },
 ]
 
 describe('genPunctuation', () => {
@@ -205,20 +246,41 @@ describe('genPunctuation', () => {
       assertChoiceInvariants(q, `punctuation t3 "${sentence}"`)
     }
   })
+
+  for (const tier of [4, 5] as const) {
+    test(`tier ${tier}: ${SAMPLES} samples — comma-correct sentence identified`, () => {
+      const questions = times(SAMPLES, () => generateQuestion('english-punctuation', tier))
+      for (const q of questions) {
+        expect(q.prompt, 'prompt format mismatch').toBe('Which sentence uses commas correctly?')
+        const entry = COMMA_BANK.find(e => e.correct === q.answer)
+        expect(entry, `unknown sentence "${q.answer}"`).toBeTruthy()
+        expect(entry!.tier, `tier ${tier} used a tier-${entry!.tier} sentence`).toBeLessThanOrEqual(tier)
+        // the answer must actually contain commas, and stripping them must
+        // reproduce a plausible "missing commas" distractor
+        expect(q.answer, 'answer should contain at least one comma').toMatch(/,/)
+        expect(q.answer.replace(/,/g, ''), 'comma-stripped answer mismatch').toBe(entry!.missing)
+        assertChoiceInvariants(q, `punctuation t${tier} "${q.answer}"`)
+      }
+    })
+  }
 })
 
 // ── Capitalization ────────────────────────────────────────────────────────────
 
-const CAPITALIZATION_BANK: { sentence: string; wrong: string; correct: string }[] = [
-  { sentence: 'we visited paris last summer', wrong: 'paris', correct: 'Paris' },
-  { sentence: 'my birthday is in october', wrong: 'october', correct: 'October' },
-  { sentence: 'i love reading books by roald dahl', wrong: 'roald dahl', correct: 'Roald Dahl' },
-  { sentence: 'she lives near the amazon river', wrong: 'amazon', correct: 'Amazon' },
-  { sentence: 'we celebrate thanksgiving in november', wrong: 'thanksgiving', correct: 'Thanksgiving' },
-  { sentence: 'my favorite team is the yankees', wrong: 'yankees', correct: 'Yankees' },
-  { sentence: 'monday is my busiest day', wrong: 'monday', correct: 'Monday' },
-  { sentence: 'he was born in texas', wrong: 'texas', correct: 'Texas' },
+const CAPITALIZATION_BANK: { sentence: string; wrong: string; correct: string; tier: 1 | 5 }[] = [
+  { sentence: 'we visited paris last summer', wrong: 'paris', correct: 'Paris', tier: 1 },
+  { sentence: 'my birthday is in october', wrong: 'october', correct: 'October', tier: 1 },
+  { sentence: 'i love reading books by roald dahl', wrong: 'roald dahl', correct: 'Roald Dahl', tier: 1 },
+  { sentence: 'she lives near the amazon river', wrong: 'amazon', correct: 'Amazon', tier: 1 },
+  { sentence: 'we celebrate thanksgiving in november', wrong: 'thanksgiving', correct: 'Thanksgiving', tier: 1 },
+  { sentence: 'my favorite team is the yankees', wrong: 'yankees', correct: 'Yankees', tier: 1 },
+  { sentence: 'monday is my busiest day', wrong: 'monday', correct: 'Monday', tier: 1 },
+  { sentence: 'he was born in texas', wrong: 'texas', correct: 'Texas', tier: 1 },
+  { sentence: 'my uncle lives in san francisco', wrong: 'san francisco', correct: 'San Francisco', tier: 5 },
+  { sentence: 'she is reading a book about helen keller', wrong: 'helen keller', correct: 'Helen Keller', tier: 5 },
 ]
+
+function capFirst(s: string): string { return s.charAt(0).toUpperCase() + s.slice(1) }
 
 describe('genCapitalization', () => {
   for (const tier of [1, 2] as const) {
@@ -230,6 +292,7 @@ describe('genCapitalization', () => {
         const sentence = match![1]
         const entry = CAPITALIZATION_BANK.find(e => e.sentence === sentence)
         expect(entry, `unknown sentence "${sentence}"`).toBeTruthy()
+        expect(entry!.tier, `tier ${tier} should only use tier-1 sentences`).toBe(1)
         expect(q.answer, `capitalization target for "${sentence}"`).toBe(entry!.wrong.split(' ')[0])
         assertChoiceInvariants(q, `cap t${tier} "${sentence}"`)
       }
@@ -244,10 +307,27 @@ describe('genCapitalization', () => {
       const wrong = match![1], sentence = match![2]
       const entry = CAPITALIZATION_BANK.find(e => e.sentence === sentence && e.wrong === wrong)
       expect(entry, `unknown sentence/word pair "${sentence}" / "${wrong}"`).toBeTruthy()
+      expect(entry!.tier, 'tier 3 should only use tier-1 sentences').toBe(1)
       expect(q.answer, `corrected form of "${wrong}"`).toBe(entry!.correct)
       assertChoiceInvariants(q, `cap t3 "${sentence}"`)
     }
   })
+
+  for (const tier of [4, 5] as const) {
+    test(`tier ${tier}: ${SAMPLES} samples — fully capitalized sentence identified`, () => {
+      const questions = times(SAMPLES, () => generateQuestion('english-capitalization', tier))
+      for (const q of questions) {
+        expect(q.prompt, 'prompt format mismatch').toBe('Which sentence is capitalized correctly?')
+        const entry = CAPITALIZATION_BANK.find(e => capFirst(e.sentence.replace(e.wrong, e.correct)) === q.answer)
+        expect(entry, `unknown answer "${q.answer}"`).toBeTruthy()
+        if (tier === 4) expect(entry!.tier, 'tier 4 should only use tier-1 sentences').toBe(1)
+        // sentence-initial letter and the proper noun must both be capitalized
+        expect(q.answer[0], 'first letter should be capitalized').toBe(q.answer[0].toUpperCase())
+        expect(q.answer, `should contain the capitalized proper noun "${entry!.correct}"`).toContain(entry!.correct)
+        assertChoiceInvariants(q, `cap t${tier} "${q.answer}"`)
+      }
+    })
+  }
 })
 
 // ── Plurals ───────────────────────────────────────────────────────────────────
@@ -259,10 +339,14 @@ const PLURAL_BANK: { singular: string; plural: string }[] = [
   { singular: 'child', plural: 'children' }, { singular: 'mouse', plural: 'mice' }, { singular: 'goose', plural: 'geese' },
   { singular: 'foot', plural: 'feet' }, { singular: 'tooth', plural: 'teeth' }, { singular: 'person', plural: 'people' },
   { singular: 'man', plural: 'men' }, { singular: 'woman', plural: 'women' }, { singular: 'leaf', plural: 'leaves' },
+  { singular: 'wife', plural: 'wives' }, { singular: 'knife', plural: 'knives' },
+  { singular: 'half', plural: 'halves' }, { singular: 'shelf', plural: 'shelves' },
+  { singular: 'sheep', plural: 'sheep' }, { singular: 'fish', plural: 'fish' },
+  { singular: 'deer', plural: 'deer' }, { singular: 'moose', plural: 'moose' },
 ]
 
 describe('genPlurals', () => {
-  for (const tier of [1, 2, 3] as const) {
+  for (const tier of [1, 2, 3, 4, 5] as const) {
     test(`tier ${tier}: ${SAMPLES} samples — correct plural form`, () => {
       const questions = times(SAMPLES, () => generateQuestion('english-plurals', tier))
       for (const q of questions) {
@@ -275,7 +359,9 @@ describe('genPlurals', () => {
         const idx = PLURAL_BANK.indexOf(entry!)
         if (tier === 1) expect(idx, 'tier 1 should only use the first 3 entries').toBeLessThan(3)
         if (tier === 2) expect(idx, 'tier 2 should only use the first 9 entries').toBeLessThan(9)
-        if (tier === 3) expect(idx, 'tier 3 should only use entries from index 9 on').toBeGreaterThanOrEqual(9)
+        if (tier === 3) { expect(idx, 'tier 3 range').toBeGreaterThanOrEqual(9); expect(idx).toBeLessThan(18) }
+        if (tier === 4) { expect(idx, 'tier 4 range').toBeGreaterThanOrEqual(18); expect(idx).toBeLessThan(22) }
+        if (tier === 5) { expect(idx, 'tier 5 range').toBeGreaterThanOrEqual(22); expect(idx).toBeLessThan(26) }
 
         expect(q.answer, `plural of "${singular}"`).toBe(entry!.plural)
         assertChoiceInvariants(q, `plurals t${tier} ${singular}`)
@@ -286,7 +372,7 @@ describe('genPlurals', () => {
 
 // ── Vocabulary ────────────────────────────────────────────────────────────────
 
-const VOCAB_BANK: { word: string; definition: string; synonym: string; antonym: string; sentence: string; tier: 1 | 2 | 3 }[] = [
+const VOCAB_BANK: { word: string; definition: string; synonym: string; antonym: string; sentence: string; tier: 1 | 2 | 3 | 4 | 5 }[] = [
   { word: 'happy', definition: 'feeling pleased or glad', synonym: 'joyful', antonym: 'sad', sentence: 'She felt ___ when she won the race.', tier: 1 },
   { word: 'quick', definition: 'moving or acting fast', synonym: 'fast', antonym: 'slow', sentence: 'The rabbit was ___ across the field.', tier: 1 },
   { word: 'big', definition: 'large in size', synonym: 'huge', antonym: 'small', sentence: 'The elephant is a ___ animal.', tier: 1 },
@@ -305,10 +391,22 @@ const VOCAB_BANK: { word: string; definition: string; synonym: string; antonym: 
   { word: 'cautious', definition: 'careful to avoid danger or mistakes', synonym: 'careful', antonym: 'reckless', sentence: 'Be ___ when crossing a busy street.', tier: 3 },
   { word: 'generous', definition: 'willing to give and share freely', synonym: 'giving', antonym: 'selfish', sentence: 'The ___ neighbor gave cookies to everyone on the block.', tier: 3 },
   { word: 'timid', definition: 'shy and easily frightened', synonym: 'shy', antonym: 'bold', sentence: 'The ___ puppy hid behind the couch.', tier: 3 },
+  { word: 'anxious', definition: 'feeling worried or nervous', synonym: 'nervous', antonym: 'calm', sentence: 'He felt ___ before the big test.', tier: 4 },
+  { word: 'diligent', definition: 'showing careful and steady effort', synonym: 'hardworking', antonym: 'lazy', sentence: 'The ___ student finished her homework early.', tier: 4 },
+  { word: 'fragile', definition: 'easily broken or damaged', synonym: 'delicate', antonym: 'sturdy', sentence: 'Please handle the ___ vase with care.', tier: 4 },
+  { word: 'humble', definition: 'not proud or boastful', synonym: 'modest', antonym: 'arrogant', sentence: 'Despite winning, she stayed ___.', tier: 4 },
+  { word: 'peculiar', definition: 'strange or unusual', synonym: 'odd', antonym: 'ordinary', sentence: 'We heard a ___ noise coming from the attic.', tier: 4 },
+  { word: 'vivid', definition: 'producing powerful, clear images in the mind', synonym: 'vibrant', antonym: 'dull', sentence: 'The sunset painted the sky in ___ colors.', tier: 4 },
+  { word: 'meticulous', definition: 'extremely careful and precise', synonym: 'thorough', antonym: 'careless', sentence: 'The scientist was ___ when recording her data.', tier: 5 },
+  { word: 'resilient', definition: 'able to recover quickly from difficulty', synonym: 'tough', antonym: 'fragile', sentence: 'The ___ team bounced back after losing the first game.', tier: 5 },
+  { word: 'skeptical', definition: 'having doubts about something', synonym: 'doubtful', antonym: 'trusting', sentence: 'She was ___ about the surprising claim.', tier: 5 },
+  { word: 'tedious', definition: 'long, slow, and boring', synonym: 'monotonous', antonym: 'exciting', sentence: 'Filling out the long form was a ___ task.', tier: 5 },
+  { word: 'unanimous', definition: 'agreed on by everyone', synonym: 'united', antonym: 'divided', sentence: 'The vote was ___ - everyone agreed.', tier: 5 },
+  { word: 'vigorous', definition: 'full of energy and effort', synonym: 'energetic', antonym: 'sluggish', sentence: 'The team gave a ___ effort in the final quarter.', tier: 5 },
 ]
 
 describe('genVocabulary', () => {
-  for (const tier of [1, 2, 3] as const) {
+  for (const tier of [1, 2, 3, 4, 5] as const) {
     test(`tier ${tier}: ${SAMPLES} samples — correct definition, word, synonym, or antonym`, () => {
       const questions = times(SAMPLES, () => generateQuestion('english-vocabulary', tier))
       const seenTypes = new Set<string>()
