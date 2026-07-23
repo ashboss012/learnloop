@@ -23,9 +23,33 @@ interface GeneratedPassageDraft {
   questions: GeneratedQuestionDraft[]
 }
 
-const PROMPT = `You are writing reading material for a 4th-grade student (age 9-10).
+// Without a concrete seed the model gravitates to the same 2-3 topics
+// (dog training, cardboard forts) across separate calls. Picking one at
+// random per call and asking for that specific scenario forces real variety
+// - still "a topic a 4th grader would enjoy," just not always the same one.
+const TOPIC_SEEDS = [
+  'a kid learning to skateboard for the first time',
+  'two siblings baking cookies and a mistake with the recipe',
+  'a class field trip to a farm',
+  'a kid starting at a new school and making a friend',
+  'a family camping trip and a surprise rainstorm',
+  'a kid saving up allowance to buy something special',
+  'a neighborhood kickball game',
+  'a kid taking care of a lost cat until its owner is found',
+  'a sibling rivalry over a board game',
+  'a kid overcoming stage fright before a school talent show',
+  'a rainy day indoor scavenger hunt',
+  'a kid learning to ride a bike without training wheels',
+  'a class project building a model volcano',
+  'a kid running a lemonade stand for the first time',
+  'a family road trip and a fun car game',
+  'a kid teaching a younger sibling how to swim',
+]
 
-Write one original, kid-friendly passage (150-250 words) on a topic a 4th grader would enjoy (animals, adventure, friendship, everyday school or family life, sports, simple how-things-work topics). Avoid heavy science or nature-documentary topics (deep sea creatures, space, complex biology) - they tend to pull in advanced vocabulary. Keep it concrete and everyday, like something in a beginning chapter book.
+function buildPrompt(topicSeed: string): string {
+  return `You are writing reading material for a 4th-grade student (age 9-10).
+
+Write one original, kid-friendly passage (150-250 words) about: ${topicSeed}. Keep it concrete and everyday, like something in a beginning chapter book. Avoid heavy science or nature-documentary topics - they tend to pull in advanced vocabulary.
 
 Write it at an actual 4th-grade reading level, not just a 4th-grade topic: short sentences (aim for 8-12 words each), everyday words a 9-year-old already knows, and no more than one or two slightly harder vocabulary words in the whole passage (those can become the vocabulary question). Do not reuse or closely paraphrase any existing copyrighted text - write something new.
 
@@ -42,17 +66,20 @@ Return ONLY valid JSON, no markdown, no commentary, in exactly this shape:
     { "kind": "inference", "prompt": "...", "choices": ["...", "...", "...", "..."], "answer": "...", "explanation": "..." }
   ]
 }`
+}
 
 async function callGemini(): Promise<GeneratedPassageDraft | null> {
   const key = process.env.GEMINI_API_KEY
   if (!key) return null
+
+  const topicSeed = TOPIC_SEEDS[Math.floor(Math.random() * TOPIC_SEEDS.length)]
 
   try {
     const res = await fetch(`${GEMINI_URL}?key=${key}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: PROMPT }] }],
+        contents: [{ parts: [{ text: buildPrompt(topicSeed) }] }],
         // maxOutputTokens has generous headroom - this model spends some of
         // its own budget on hidden "thinking" tokens before the visible
         // JSON response, on top of the ~800-1200 the passage+questions need.

@@ -23,12 +23,12 @@ Do not proceed to Phase 2 until Phase 1 actually hooks him. If it does not, fix 
 
 ## Phase 2. Review pipeline plus English
 
-**Status: grammar shipped, reading comprehension + review pipeline not started.** Grammar didn't need the content lifecycle or admin review view — it's rule-based and code-verified like math (03), so it's generated on-demand with no LLM, same architecture as the math skills (lib/english/generator.ts). Reading comprehension is the part still gated: it needs an LLM API key (none configured yet) and the actual review pipeline (05) — draft/pending/published/rejected content lifecycle, admin review UI, offline batch generation. Read 05 fully before starting that half.
+**Status: done.** All three English content pillars from 03 are live: grammar (rule-based, no review needed), vocabulary (also rule-based, hand-authored word bank), and reading comprehension (Gemini-generated passages + questions through the full draft/pending/published/rejected pipeline from 05, admin review UI at /admin/review).
 
 - ~~Add grammar (rule-based, light review) from 03~~ — done
-- Build the content lifecycle and the admin review view (05)
-- Add reading comprehension (original passages, full review) from 03
-- Once both land, the app has a working way to add safe content beyond grammar
+- ~~Build the content lifecycle and the admin review view (05)~~ — done
+- ~~Add reading comprehension (original passages, full review) from 03~~ — done
+- ~~Add vocabulary (rule-based, no review) from 03~~ — done
 
 ## Phase 3. Tamil
 
@@ -39,10 +39,12 @@ Do not proceed to Phase 2 until Phase 1 actually hooks him. If it does not, fix 
 
 ## Phase 4. Leaderboard
 
-- Weekly leagues, cohort by grade (06)
-- Bots as pre-generated weekly earning timelines, revealed on a schedule
-- Tune the distribution so his normal effort is mid-pack and a strong week tops it
-- Scheduled job to advance bot XP and reset weekly
+**Status: shipped in reduced scope, deliberately.** Single weekly board (not full multi-league promotion), cohort by grade. Bots use a deterministic seeded function computed live at read time instead of a scheduled job — same effect (a believable weekly earning timeline per bot) without needing a cron job. Leagues/promotion ladder and tournaments were explicitly deferred, not forgotten - revisit if the single board stops feeling like enough.
+
+- ~~Weekly board, cohort by grade (06)~~ — done, single board
+- ~~Bots as pre-generated weekly earning timelines~~ — done, computed live instead of scheduled
+- Tune the distribution so his normal effort is mid-pack and a strong week tops it — not yet validated against real usage
+- Leagues, promotion/relegation, tournaments — deferred
 
 ## Phase 5. Adaptive engine, later
 

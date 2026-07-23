@@ -16,6 +16,18 @@ const READING_COMPREHENSION_SLUG = 'english-reading-comprehension'
 const CHECKPOINT_SIZE = 2
 const CHECKPOINT_TIER = 3
 
+// Spaced review (docs/08, signal 2): a skill missed in its last session
+// resurfaces on the dashboard much sooner than one just aced. Simple fixed
+// intervals, not a streak-scaled Leitner box - "do not overbuild" per docs/08.
+const MISS_REVIEW_DAYS = 1
+const PERFECT_REVIEW_DAYS = 4
+
+function reviewDueDate(daysFromNow: number): string {
+  const d = new Date()
+  d.setUTCDate(d.getUTCDate() + daysFromNow)
+  return d.toISOString().slice(0, 10)
+}
+
 export async function startSession(skillId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -339,22 +351,28 @@ export async function completeSession(sessionId: string) {
   })
   const perfect = attempts.length === session.question_count && attempts.every(a => a.was_correct)
 
-  let leveledUp = false
-  if (perfect) {
-    const { data: progress } = await supabase
-      .from('user_skill_progress')
-      .select('tier')
-      .eq('user_id', user.id)
-      .eq('skill_id', session.skill_id)
-      .single()
-    if ((progress?.tier ?? 1) < 3) {
-      await supabase.from('user_skill_progress').upsert(
-        { user_id: user.id, skill_id: session.skill_id, tier: 3, updated_at: new Date().toISOString() },
-        { onConflict: 'user_id,skill_id' },
-      )
-      leveledUp = true
-    }
-  }
+  // Spaced review, unconditionally on every completion - a missed session
+  // resurfaces this skill tomorrow, a perfect one pushes it out further.
+  const { data: progress } = await supabase
+    .from('user_skill_progress')
+    .select('tier')
+    .eq('user_id', user.id)
+    .eq('skill_id', session.skill_id)
+    .single()
+  const currentTier = progress?.tier ?? 1
+  const leveledUp = perfect && currentTier < 3
+  const now = new Date().toISOString()
+  await supabase.from('user_skill_progress').upsert(
+    {
+      user_id: user.id,
+      skill_id: session.skill_id,
+      tier: leveledUp ? 3 : currentTier,
+      updated_at: now,
+      last_practiced_at: now,
+      due_for_review_at: reviewDueDate(perfect ? PERFECT_REVIEW_DAYS : MISS_REVIEW_DAYS),
+    },
+    { onConflict: 'user_id,skill_id' },
+  )
 
   await supabase
     .from('sessions')
@@ -456,8 +474,18 @@ export async function resolveSkipCheckpoint(sessionId: string) {
   const passed = checkpointAnswers.every(a => a.was_correct)
   if (!passed) return { passed: false as const }
 
+  // Passing the checkpoint is itself a strong-performance signal - same
+  // spaced-review treatment as a perfect full session.
+  const now = new Date().toISOString()
   await supabase.from('user_skill_progress').upsert(
-    { user_id: user.id, skill_id: session.skill_id, tier: 3, updated_at: new Date().toISOString() },
+    {
+      user_id: user.id,
+      skill_id: session.skill_id,
+      tier: 3,
+      updated_at: now,
+      last_practiced_at: now,
+      due_for_review_at: reviewDueDate(PERFECT_REVIEW_DAYS),
+    },
     { onConflict: 'user_id,skill_id' },
   )
 

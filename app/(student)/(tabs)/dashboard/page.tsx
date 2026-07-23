@@ -19,15 +19,29 @@ export default async function Dashboard() {
     getHeaderData(userId),
     supabase.from('users').select('display_name, grade, math_diagnostic_done, english_diagnostic_done').eq('id', userId).single(),
     supabase.from('skills').select('*').order('subject').order('difficulty_order'),
-    supabase.from('user_skill_progress').select('skill_id, tier').eq('user_id', userId),
+    supabase.from('user_skill_progress').select('skill_id, tier, due_for_review_at').eq('user_id', userId),
     getCheckinData(),
   ])
 
   const displayName = profile?.display_name ?? 'Explorer'
   const grade = profile?.grade ?? 4
   const tierBySkill = new Map((progress ?? []).map(p => [p.skill_id, p.tier]))
-  const mathSkills = (skills ?? []).filter(s => s.subject === 'math')
-  const englishSkills = (skills ?? []).filter(s => s.subject === 'english')
+
+  // Spaced review (docs/08): a skill missed in its last session comes due
+  // again sooner - surfaced here as a sort-to-front + badge, not a change
+  // to session mechanics.
+  const today = new Date().toISOString().slice(0, 10)
+  const dueForReview = new Set(
+    (progress ?? []).filter(p => p.due_for_review_at && p.due_for_review_at <= today).map(p => p.skill_id),
+  )
+  const bySubject = (subject: string) =>
+    (skills ?? [])
+      .filter(s => s.subject === subject)
+      .slice()
+      .sort((a, b) => Number(dueForReview.has(b.id)) - Number(dueForReview.has(a.id)))
+
+  const mathSkills = bySubject('math')
+  const englishSkills = bySubject('english')
   const mathDiagnosticDone = profile?.math_diagnostic_done ?? false
   const englishDiagnosticDone = profile?.english_diagnostic_done ?? false
 
@@ -68,6 +82,7 @@ export default async function Dashboard() {
         title="Math Skills"
         skills={mathSkills}
         tierBySkill={tierBySkill}
+        dueForReview={dueForReview}
         grade={grade}
         diagnosticDone={mathDiagnosticDone}
       />
@@ -77,6 +92,7 @@ export default async function Dashboard() {
             title="English Skills"
             skills={englishSkills}
             tierBySkill={tierBySkill}
+            dueForReview={dueForReview}
             grade={grade}
             diagnosticDone={englishDiagnosticDone}
           />
@@ -87,11 +103,12 @@ export default async function Dashboard() {
 }
 
 function SkillSection({
-  title, skills, tierBySkill, grade, diagnosticDone,
+  title, skills, tierBySkill, dueForReview, grade, diagnosticDone,
 }: {
   title: string
   skills: Skill[]
   tierBySkill: Map<string, number>
+  dueForReview: Set<string>
   grade: number
   diagnosticDone: boolean
 }) {
@@ -113,6 +130,7 @@ function SkillSection({
             icon={SKILL_ICONS[skill.slug] ?? '📐'}
             tier={tierBySkill.get(skill.id) ?? startingTier(skill.slug, grade)}
             diagnosticDone={diagnosticDone}
+            dueForReview={dueForReview.has(skill.id)}
           />
         ))}
       </div>

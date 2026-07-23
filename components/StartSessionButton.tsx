@@ -11,11 +11,12 @@ interface Props {
   icon: string
   tier: number
   diagnosticDone: boolean
+  dueForReview?: boolean
 }
 
 const READING_COMPREHENSION_SLUG = 'english-reading-comprehension'
 
-export default function StartSessionButton({ skill, color, icon, tier, diagnosticDone }: Props) {
+export default function StartSessionButton({ skill, color, icon, tier, diagnosticDone, dueForReview = false }: Props) {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const isReading = skill.slug === READING_COMPREHENSION_SLUG
@@ -61,6 +62,14 @@ export default function StartSessionButton({ skill, color, icon, tier, diagnosti
           style={{ background: 'white', color }}
         >
           Lv {tier}
+        </span>
+      )}
+      {dueForReview && (
+        <span
+          className="absolute top-3 left-3 text-xs font-black rounded-full px-2 py-0.5"
+          style={{ background: '#fef3c7', color: '#92400e' }}
+        >
+          🔁 Review
         </span>
       )}
       <div className="relative inline-flex items-center justify-center mb-2" style={{ width: 48, height: 48 }}>

@@ -329,9 +329,9 @@ function clientForCompleteSession({
   currentTier = 1,
 } = {}) {
   const rpc = makeRpc()
-  let upsertedTier: number | null = null
-  const progressUpsert = vi.fn().mockImplementation((row: { tier: number }) => {
-    upsertedTier = row.tier
+  let upsertedRow: { tier: number; due_for_review_at?: string; last_practiced_at?: string } | null = null
+  const progressUpsert = vi.fn().mockImplementation((row: typeof upsertedRow) => {
+    upsertedRow = row
     return Promise.resolve({ data: null, error: null })
   })
 
@@ -376,10 +376,17 @@ function clientForCompleteSession({
     from: vi.fn().mockImplementation((table: string) => tables[table] ?? {}),
     rpc,
     _rpc: rpc,
-    _getUpsertedTier: () => upsertedTier,
+    _getUpsertedTier: () => upsertedRow?.tier ?? null,
+    _getUpsertedRow: () => upsertedRow,
     _progressUpsert: progressUpsert,
   }
   return client
+}
+
+function daysFromNowUTC(days: number): string {
+  const d = new Date()
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
 }
 
 beforeEach(() => {
@@ -628,7 +635,7 @@ describe('completeSession — perfect-run skip-ahead reward', () => {
     expect(client._getUpsertedTier()).toBe(3)
   })
 
-  test('already at Lv 3: perfect but not leveledUp, no upsert', async () => {
+  test('already at Lv 3: perfect but not leveledUp, tier unchanged in the (still-fired) upsert', async () => {
     const client = clientForCompleteSession({
       firstAttempts: [true, true, true, true, true, true, true, true],
       questionCount: 8,
@@ -640,10 +647,12 @@ describe('completeSession — perfect-run skip-ahead reward', () => {
 
     expect((result as Record<string, unknown>).perfect).toBe(true)
     expect((result as Record<string, unknown>).leveledUp).toBe(false)
-    expect(client._progressUpsert).not.toHaveBeenCalled()
+    // Upsert still fires (it also carries the spaced-review date), just
+    // without bumping a tier that's already at the cap.
+    expect(client._getUpsertedTier()).toBe(3)
   })
 
-  test('one wrong first attempt: not perfect, no tier upsert, normal XP unaffected', async () => {
+  test('one wrong first attempt: not perfect, tier unchanged, normal XP unaffected', async () => {
     const client = clientForCompleteSession({
       firstAttempts: [true, true, false, true, true, true, true, true],
       questionCount: 8,
@@ -655,7 +664,7 @@ describe('completeSession — perfect-run skip-ahead reward', () => {
 
     expect((result as Record<string, unknown>).perfect).toBe(false)
     expect((result as Record<string, unknown>).leveledUp).toBe(false)
-    expect(client._progressUpsert).not.toHaveBeenCalled()
+    expect(client._getUpsertedTier()).toBe(1)
 
     const xpCalls = client._rpc.mock.calls.filter((c: unknown[]) => c[0] === 'increment_xp')
     expect(xpCalls.length).toBe(1)
@@ -673,7 +682,7 @@ describe('completeSession — perfect-run skip-ahead reward', () => {
     const result = await completeSession(SESS_ID)
 
     expect((result as Record<string, unknown>).perfect).toBe(false)
-    expect(client._progressUpsert).not.toHaveBeenCalled()
+    expect(client._getUpsertedTier()).toBe(1)
   })
 
   test('a failed skip-checkpoint attempt (position >= question_count) does not break the perfect badge', async () => {
@@ -731,6 +740,37 @@ describe('completeSession — perfect-run skip-ahead reward', () => {
     expect((result as Record<string, unknown>).perfect).toBe(true)
     expect((result as Record<string, unknown>).leveledUp).toBe(true)
     expect(upsertedTier).toBe(3)
+  })
+})
+
+describe('completeSession — spaced review (docs/08 signal 2)', () => {
+  test('a session with a miss comes due for review tomorrow', async () => {
+    const client = clientForCompleteSession({
+      firstAttempts: [true, true, false, true, true, true, true, true],
+      questionCount: 8,
+      currentTier: 2,
+    })
+    vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
+
+    await completeSession(SESS_ID)
+
+    const row = client._getUpsertedRow()
+    expect(row?.due_for_review_at).toBe(daysFromNowUTC(1))
+    expect(row?.last_practiced_at).toBeTruthy()
+  })
+
+  test('a perfect session is pushed further out (4 days)', async () => {
+    const client = clientForCompleteSession({
+      firstAttempts: [true, true, true, true, true, true, true, true],
+      questionCount: 8,
+      currentTier: 2,
+    })
+    vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
+
+    await completeSession(SESS_ID)
+
+    const row = client._getUpsertedRow()
+    expect(row?.due_for_review_at).toBe(daysFromNowUTC(4))
   })
 })
 
@@ -827,9 +867,9 @@ function clientForResolveSkipCheckpoint({
   incomplete = false,
 } = {}) {
   const rpc = makeRpc()
-  let upsertedTier: number | null = null
-  const progressUpsert = vi.fn().mockImplementation((row: { tier: number }) => {
-    upsertedTier = row.tier
+  let upsertedRow: { tier: number; due_for_review_at?: string; last_practiced_at?: string } | null = null
+  const progressUpsert = vi.fn().mockImplementation((row: typeof upsertedRow) => {
+    upsertedRow = row
     return Promise.resolve({ data: null, error: null })
   })
   const sessionUpdate = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: null, error: null }) })
@@ -866,7 +906,8 @@ function clientForResolveSkipCheckpoint({
     from: vi.fn().mockImplementation((table: string) => tables[table] ?? {}),
     rpc,
     _rpc: rpc,
-    _getUpsertedTier: () => upsertedTier,
+    _getUpsertedTier: () => upsertedRow?.tier ?? null,
+    _getUpsertedRow: () => upsertedRow,
     _progressUpsert: progressUpsert,
     _sessionUpdate: sessionUpdate,
   }
@@ -882,6 +923,7 @@ describe('resolveSkipCheckpoint', () => {
     expect((result as Record<string, unknown>).passed).toBe(true)
     expect(client._getUpsertedTier()).toBe(3)
     expect(client._sessionUpdate).toHaveBeenCalled()
+    expect(client._getUpsertedRow()?.due_for_review_at).toBe(daysFromNowUTC(4))
     const xpCalls = client._rpc.mock.calls.filter((c: unknown[]) => c[0] === 'increment_xp')
     expect(xpCalls.length).toBe(1)
     expect((xpCalls[0][1] as { amount: number }).amount).toBe(50)
