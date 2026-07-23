@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
-import { BOT_ROSTER, botWeeklyXp, getWeekStart } from '@/lib/leaderboard/bots'
+import { BOT_ROSTER, getWeekStart } from '@/lib/leaderboard/bots'
+import { scaledBotXp } from '@/lib/leaderboard/leagues'
 
 export interface BoardEntry {
   id: string
@@ -17,7 +18,7 @@ interface WeeklyXpRow {
   xp: number
 }
 
-export async function getWeeklyBoard(userId: string, grade: number): Promise<BoardEntry[]> {
+export async function getWeeklyBoard(userId: string, grade: number, league: number = 1): Promise<BoardEntry[]> {
   const supabase = await createClient()
   const weekStart = getWeekStart()
 
@@ -40,7 +41,7 @@ export async function getWeeklyBoard(userId: string, grade: number): Promise<Boa
     id: bot.id,
     displayName: bot.displayName,
     emoji: bot.emoji,
-    xp: botWeeklyXp(bot, weekStart, now),
+    xp: scaledBotXp(bot, weekStart, now, league),
     isSelf: false,
   }))
 
