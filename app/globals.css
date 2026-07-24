@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Tailwind v4 is CSS-first (no tailwind.config.js) - this line is what makes
+   `dark:` variants and the .dark overrides below respond to next-themes'
+   class="dark" on <html>, instead of only the OS-level media query. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --bg: #fdfbf7;
   --surface: #ffffff;
@@ -8,9 +13,30 @@
   --correct: #22c55e;
   --wrong: #ef4444;
   --xp: #f59e0b;
+  --streak: #f97316;
+  --freeze: #60a5fa;
   --text: #1a1a2e;
   --muted: #6b7280;
   --border: #e5e7eb;
+  --surface-alt: #f3f4f6;
+  --glass: rgba(255, 255, 255, 0.72);
+}
+
+.dark {
+  --bg: #12162b;
+  --surface: #1c2140;
+  --primary: #8b83ff;
+  --primary-dark: #6c63ff;
+  --correct: #34d399;
+  --wrong: #f87171;
+  --xp: #fbbf24;
+  --streak: #fb923c;
+  --freeze: #7dd3fc;
+  --text: #f1f2fb;
+  --muted: #9aa1c4;
+  --border: #343a63;
+  --surface-alt: #242a4d;
+  --glass: rgba(28, 33, 64, 0.78);
 }
 
 body {
@@ -20,6 +46,21 @@ body {
   /* prevent iOS bounce scroll on the body */
   overscroll-behavior: none;
 }
+
+/* Pre-dark-mode code has literal Tailwind gray/white/blue utility classes
+   sprinkled across cards and stat labels (bg-white cards, text-gray-400/500
+   /600/700 labels, bg-gray-100/200 progress tracks, text-blue-400 badge).
+   Rather than touch every call site, override them under .dark - these
+   selectors (.dark .text-gray-500) outrank Tailwind's own single-class
+   utility rules on specificity, so no !important is needed. */
+.dark .bg-white         { background-color: var(--surface); }
+.dark .bg-gray-100       { background-color: #2a3055; }
+.dark .bg-gray-200       { background-color: #343a63; }
+.dark .text-gray-400     { color: #9aa1c4; }
+.dark .text-gray-500     { color: #aeb4d1; }
+.dark .text-gray-600     { color: #c3c8de; }
+.dark .text-gray-700     { color: #dde0f0; }
+.dark .text-blue-400     { color: var(--freeze); }
 
 .bg-blobs {
   position: relative;
@@ -48,9 +89,9 @@ body {
 }
 
 /* Frosted glass treatment for fixed header/tab bars, so they read as part
-   of the background rather than flat white strips on top of it. */
+   of the background rather than flat strips on top of it. */
 .glass-bar {
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--glass);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }

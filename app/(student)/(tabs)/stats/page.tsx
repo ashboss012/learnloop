@@ -89,7 +89,7 @@ export default async function StatsPage() {
             const label = new Date(date + 'T00:00:00Z').toLocaleDateString('en-US', { weekday: 'narrow' })
             return (
               <div key={date} className="flex flex-col items-center gap-1">
-                <div className="rounded-full" style={{ width: 28, height: 28, background: active ? 'var(--correct)' : '#e5e7eb' }} />
+                <div className="rounded-full" style={{ width: 28, height: 28, background: active ? 'var(--correct)' : 'var(--border)' }} />
                 <span className="text-xs font-bold text-gray-400">{label}</span>
               </div>
             )

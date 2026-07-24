@@ -83,7 +83,7 @@ export default async function AdminPage() {
           <div className="bg-white rounded-2xl overflow-hidden border-2" style={{ borderColor: 'var(--border)' }}>
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: '2px solid var(--border)', background: '#f9fafb' }}>
+                <tr style={{ borderBottom: '2px solid var(--border)', background: 'var(--surface-alt)' }}>
                   <th className="text-left px-4 py-3 font-black text-gray-600">Name</th>
                   <th className="text-right px-4 py-3 font-black text-gray-600">XP</th>
                   <th className="text-right px-4 py-3 font-black text-gray-600">Streak</th>
@@ -116,7 +116,7 @@ export default async function AdminPage() {
             <div className="bg-white rounded-2xl overflow-hidden border-2" style={{ borderColor: 'var(--border)' }}>
               <table className="w-full text-sm">
                 <thead>
-                  <tr style={{ borderBottom: '2px solid var(--border)', background: '#f9fafb' }}>
+                  <tr style={{ borderBottom: '2px solid var(--border)', background: 'var(--surface-alt)' }}>
                     <th className="text-left px-4 py-3 font-black text-gray-600">Date</th>
                     <th className="text-right px-4 py-3 font-black text-gray-600">Started</th>
                     <th className="text-right px-4 py-3 font-black text-gray-600">Completed</th>
@@ -149,7 +149,7 @@ export default async function AdminPage() {
             <div className="bg-white rounded-2xl overflow-hidden border-2" style={{ borderColor: 'var(--border)' }}>
               <table className="w-full text-sm">
                 <thead>
-                  <tr style={{ borderBottom: '2px solid var(--border)', background: '#f9fafb' }}>
+                  <tr style={{ borderBottom: '2px solid var(--border)', background: 'var(--surface-alt)' }}>
                     <th className="text-left px-4 py-3 font-black text-gray-600">Skill</th>
                     <th className="text-right px-4 py-3 font-black text-gray-600">Attempts</th>
                     <th className="text-right px-4 py-3 font-black text-gray-600">1st-try correct</th>

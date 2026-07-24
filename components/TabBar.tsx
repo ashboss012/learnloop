@@ -22,7 +22,7 @@ export default function TabBar() {
               key={tab.href}
               href={tab.href}
               className="flex flex-col items-center justify-center gap-0.5"
-              style={{ minHeight: 56, padding: '8px 0', color: active ? 'var(--primary)' : '#9ca3af' }}
+              style={{ minHeight: 56, padding: '8px 0', color: active ? 'var(--primary)' : 'var(--muted)' }}
             >
               <span style={{ fontSize: 22, lineHeight: 1 }}>{tab.icon}</span>
               <span className="font-black" style={{ fontSize: '0.65rem' }}>{tab.label}</span>

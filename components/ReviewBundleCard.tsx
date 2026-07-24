@@ -68,7 +68,7 @@ export default function ReviewBundleCard({ bundle }: { bundle: PassageBundle }) 
         <span className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
           {bundle.topic ?? 'Reading passage'}
         </span>
-        <span className="text-xs font-bold rounded-full px-2 py-0.5" style={{ background: '#f3f4f6', color: 'var(--muted)' }}>
+        <span className="text-xs font-bold rounded-full px-2 py-0.5" style={{ background: 'var(--surface-alt)', color: 'var(--muted)' }}>
           Reading level {bundle.reading_level.toFixed(1)}
         </span>
       </div>
@@ -147,7 +147,7 @@ export default function ReviewBundleCard({ bundle }: { bundle: PassageBundle }) 
               onClick={() => setEditing(false)}
               disabled={saving}
               className="rounded-xl font-bold px-4 py-2 text-sm"
-              style={{ background: '#f3f4f6' }}
+              style={{ background: 'var(--surface-alt)' }}
             >
               Cancel
             </button>
@@ -166,7 +166,7 @@ export default function ReviewBundleCard({ bundle }: { bundle: PassageBundle }) 
               onClick={() => setEditing(true)}
               disabled={saving}
               className="rounded-xl font-bold px-4 py-2 text-sm"
-              style={{ background: '#f3f4f6' }}
+              style={{ background: 'var(--surface-alt)' }}
             >
               Edit
             </button>

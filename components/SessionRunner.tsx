@@ -302,21 +302,21 @@ export default function SessionRunner({ sessionId, skillName, totalQuestions, in
             {isReading && question.passage_text && (
               <div
                 className="rounded-3xl p-5 mb-4 text-sm leading-relaxed whitespace-pre-wrap"
-                style={{ background: '#f9fafb', border: '2px solid var(--border)', color: 'var(--text)', maxHeight: 260, overflowY: 'auto' }}
+                style={{ background: 'var(--surface-alt)', border: '2px solid var(--border)', color: 'var(--text)', maxHeight: 260, overflowY: 'auto' }}
               >
                 {question.passage_text}
               </div>
             )}
             <div
               className="rounded-3xl p-6 mb-5 font-black leading-snug"
-              style={{ background: 'white', border: '2px solid var(--border)', fontSize: 'clamp(1.25rem, 5vw, 1.75rem)', minHeight: 110 }}
+              style={{ background: 'var(--surface)', border: '2px solid var(--border)', fontSize: 'clamp(1.25rem, 5vw, 1.75rem)', minHeight: 110 }}
             >
               {question.prompt}
             </div>
 
             <div className="space-y-3 flex-1">
               {question.choices?.map(choice => {
-                let bg = 'white', border = 'var(--border)', textColor = 'var(--text)'
+                let bg = 'var(--surface)', border = 'var(--border)', textColor = 'var(--text)'
                 if (phase === 'feedback' && feedback) {
                   if (choice.value === feedback.correctAnswer) { bg = '#dcfce7'; border = 'var(--correct)'; textColor = '#166534' }
                   else if (choice.value === feedback.chosen && !feedback.correct) { bg = '#fee2e2'; border = 'var(--wrong)'; textColor = '#991b1b' }

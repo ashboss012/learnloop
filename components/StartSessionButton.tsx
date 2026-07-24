@@ -87,7 +87,7 @@ export default function StartSessionButton({ skill, color, icon, tier, diagnosti
         <span style={{ fontSize: 28, lineHeight: 1, position: 'relative' }}>{loading ? '⏳' : icon}</span>
       </div>
       <div className="font-black" style={{ color, fontSize: '1.05rem' }}>{skill.name}</div>
-      <div className="font-semibold mt-1" style={{ color: '#9ca3af', fontSize: '0.8rem' }}>
+      <div className="font-semibold mt-1" style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>
         {loading ? 'Starting…' : 'Tap to practice'}
       </div>
     </button>

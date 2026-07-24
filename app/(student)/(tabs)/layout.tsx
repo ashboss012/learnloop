@@ -16,11 +16,11 @@ export default async function TabsLayout({ children }: { children: React.ReactNo
             <div className="flex items-center gap-1 font-black text-sm shrink-0" style={{ color: 'var(--xp)' }}>
               ⚡<span>{xp}</span>
             </div>
-            <div className="flex items-center gap-1 font-black text-sm shrink-0" style={{ color: '#f97316' }}>
+            <div className="flex items-center gap-1 font-black text-sm shrink-0" style={{ color: 'var(--streak)' }}>
               🔥<span>{currentStreak}</span>
             </div>
             {freezes > 0 && (
-              <div className="flex items-center gap-1 font-black text-sm shrink-0 text-blue-400">
+              <div className="flex items-center gap-1 font-black text-sm shrink-0" style={{ color: 'var(--freeze)' }}>
                 🧊<span>{freezes}</span>
               </div>
             )}

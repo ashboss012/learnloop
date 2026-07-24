@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getAuthedUser } from '@/lib/data/student'
 import Mascot from '@/components/Mascot'
 import ProfileForm from '@/components/ProfileForm'
+import ThemeToggle from '@/components/ThemeToggle'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -41,6 +42,11 @@ export default async function ProfilePage() {
       </div>
 
       <ProfileForm initialDisplayName={displayName} initialGrade={grade} />
+
+      <div className="mt-4">
+        <span className="block font-black text-sm mb-1.5">Appearance</span>
+        <ThemeToggle />
+      </div>
     </div>
   )
 }

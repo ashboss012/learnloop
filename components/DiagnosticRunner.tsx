@@ -111,7 +111,7 @@ export default function DiagnosticRunner({ sessionId, subject, totalQuestions, i
       <div className="flex-1 max-w-lg mx-auto w-full px-4 flex flex-col" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
         {phase === 'loading' && (
           <div className="flex-1 flex items-center justify-center">
-            <div style={{ width: 48, height: 48, border: '5px solid #e5e7eb', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+            <div style={{ width: 48, height: 48, border: '5px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
         )}
@@ -120,14 +120,14 @@ export default function DiagnosticRunner({ sessionId, subject, totalQuestions, i
           <div key={question.id} className="question-enter flex-1 flex flex-col">
             <div
               className="rounded-3xl p-6 mb-5 font-black leading-snug"
-              style={{ background: 'white', border: '2px solid var(--border)', fontSize: 'clamp(1.25rem, 5vw, 1.75rem)', minHeight: 110 }}
+              style={{ background: 'var(--surface)', border: '2px solid var(--border)', fontSize: 'clamp(1.25rem, 5vw, 1.75rem)', minHeight: 110 }}
             >
               {question.prompt}
             </div>
 
             <div className="space-y-3 flex-1">
               {question.choices?.map(choice => {
-                let bg = 'white', border = 'var(--border)', textColor = 'var(--text)'
+                let bg = 'var(--surface)', border = 'var(--border)', textColor = 'var(--text)'
                 if (phase === 'feedback' && feedback) {
                   if (choice.value === feedback.correctAnswer) { bg = '#dcfce7'; border = 'var(--correct)'; textColor = '#166534' }
                   else if (choice.value === feedback.chosen && !feedback.correct) { bg = '#fee2e2'; border = 'var(--wrong)'; textColor = '#991b1b' }
