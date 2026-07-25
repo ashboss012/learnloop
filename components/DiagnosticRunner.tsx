@@ -127,20 +127,24 @@ export default function DiagnosticRunner({ sessionId, subject, totalQuestions, i
 
             <div className="space-y-3 flex-1">
               {question.choices?.map(choice => {
-                let bg = 'var(--surface)', border = 'var(--border)', textColor = 'var(--text)'
+                let bg = 'var(--surface)', border = 'var(--border)'
+                const textColor = 'var(--text)'
                 if (phase === 'feedback' && feedback) {
-                  if (choice.value === feedback.correctAnswer) { bg = '#dcfce7'; border = 'var(--correct)'; textColor = '#166534' }
-                  else if (choice.value === feedback.chosen && !feedback.correct) { bg = '#fee2e2'; border = 'var(--wrong)'; textColor = '#991b1b' }
+                  if (choice.value === feedback.correctAnswer) { bg = 'color-mix(in srgb, var(--correct) 18%, var(--surface))'; border = 'var(--correct)' }
+                  else if (choice.value === feedback.chosen && !feedback.correct) { bg = 'color-mix(in srgb, var(--wrong) 18%, var(--surface))'; border = 'var(--wrong)' }
                 }
                 return (
                   <button
                     key={choice.value}
                     onClick={() => handleChoice(choice.value)}
                     disabled={phase === 'feedback'}
-                    className="w-full text-left rounded-2xl font-bold transition-colors"
+                    className="btn-3d w-full text-left rounded-2xl font-bold"
                     style={{
                       background: bg,
-                      border: `2.5px solid ${border}`,
+                      borderTopColor: border,
+                      borderLeftColor: border,
+                      borderRightColor: border,
+                      borderBottomColor: `color-mix(in srgb, ${border} 60%, black)`,
                       color: textColor,
                       fontSize: 'clamp(1rem, 4vw, 1.125rem)',
                       padding: '14px 20px',
@@ -159,15 +163,15 @@ export default function DiagnosticRunner({ sessionId, subject, totalQuestions, i
                 <div
                   className="rounded-3xl p-5 mb-4"
                   style={{
-                    background: feedback.correct ? '#dcfce7' : '#fee2e2',
+                    background: feedback.correct ? 'color-mix(in srgb, var(--correct) 18%, var(--surface))' : 'color-mix(in srgb, var(--wrong) 18%, var(--surface))',
                     animation: feedback.correct ? 'pop 0.4s ease-out' : 'shake 0.4s ease-in-out',
                   }}
                 >
-                  <p className="font-black text-xl mb-1" style={{ color: feedback.correct ? '#166534' : '#991b1b' }}>
+                  <p className="font-black text-xl mb-1" style={{ color: feedback.correct ? 'var(--correct)' : 'var(--wrong)' }}>
                     {feedback.correct ? '✅ Correct!' : '❌ Not quite!'}
                   </p>
                   {!feedback.correct && (
-                    <p className="font-semibold text-base mt-1" style={{ color: '#991b1b' }}>
+                    <p className="font-semibold text-base mt-1" style={{ color: 'var(--wrong)' }}>
                       The answer is <strong>{feedback.correctAnswer}</strong>
                     </p>
                   )}
@@ -179,8 +183,17 @@ export default function DiagnosticRunner({ sessionId, subject, totalQuestions, i
                 `}</style>
                 <button
                   onClick={handleContinue}
-                  className="w-full rounded-2xl font-black text-white transition-all active:scale-95"
-                  style={{ background: 'var(--primary)', fontSize: '1.25rem', padding: '16px 24px', minHeight: 60 }}
+                  className="btn-3d w-full rounded-2xl font-black text-white"
+                  style={{
+                    background: 'var(--primary)',
+                    borderTopColor: 'var(--primary)',
+                    borderLeftColor: 'var(--primary)',
+                    borderRightColor: 'var(--primary)',
+                    borderBottomColor: 'var(--primary-dark)',
+                    fontSize: '1.25rem',
+                    padding: '16px 24px',
+                    minHeight: 60,
+                  }}
                 >
                   {isLast ? "Let's go! 🎉" : 'Continue →'}
                 </button>

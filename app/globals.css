@@ -126,6 +126,22 @@ body {
   }
 }
 
+/* Duolingo-style "chunky" pressable button: a thick bottom border that
+   visually collapses and the button drops into it on press, mimicking a
+   physical button. Width/style are uniform here; per-element COLOR is set
+   via inline style (border*Color longhand props only - never the `border`
+   shorthand inline, which would clobber these widths). */
+.btn-3d {
+  border-style: solid;
+  border-width: 2px;
+  border-bottom-width: 5px;
+  transition: transform 0.08s ease, border-bottom-width 0.08s ease;
+}
+.btn-3d:active:not(:disabled) {
+  transform: translateY(4px);
+  border-bottom-width: 1px;
+}
+
 /* Remove 300ms tap delay on all interactive elements */
 button, a, [role="button"] {
   touch-action: manipulation;
