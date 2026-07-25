@@ -51,6 +51,14 @@ export default function SessionRunner({ sessionId, skillName, totalQuestions, in
   const [selected, setSelected] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<FeedbackState | null>(null)
   const [completionData, setCompletionData] = useState<{ xp: number; streak: number; perfect: boolean; leveledUp: boolean; skippedAhead: boolean } | null>(null)
+  const [levelUpTier, setLevelUpTier] = useState<number | null>(null)
+
+  // Small auto-dismissing toast, not a blocking screen - a tier step up
+  // mid-session is a nice-to-notice moment, not worth interrupting the flow.
+  function flashLevelUp(newTier: number) {
+    setLevelUpTier(newTier)
+    setTimeout(() => setLevelUpTier(null), 2000)
+  }
 
   async function handleChoice(value: string) {
     if (phase !== 'question' || selected) return
@@ -186,8 +194,10 @@ export default function SessionRunner({ sessionId, skillName, totalQuestions, in
       setPhase('loading')
       const res = await getNextQuestion(sessionId, question.id)
       if ('error' in res) { router.push('/dashboard'); return }
-      setQuestion(res.question as Question)
-      setPrimaryPosition(res.question.position)
+      const nextQuestion = res.question as Question
+      if (nextQuestion.difficulty > question.difficulty) flashLevelUp(nextQuestion.difficulty)
+      setQuestion(nextQuestion)
+      setPrimaryPosition(nextQuestion.position)
       setSelected(null)
       setFeedback(null)
       setPhase('question')
@@ -235,6 +245,15 @@ export default function SessionRunner({ sessionId, skillName, totalQuestions, in
 
   return (
     <div className="min-h-screen flex flex-col bg-blobs">
+      {levelUpTier !== null && (
+        <div
+          className="fixed left-1/2 top-4 z-30 flex items-center gap-2 rounded-full font-black text-white px-4 py-2"
+          style={{ transform: 'translateX(-50%)', background: 'var(--primary)', animation: 'toastIn 0.3s ease-out', boxShadow: '0 4px 14px rgba(0,0,0,0.2)' }}
+        >
+          🚀 Level up! Now Lv {levelUpTier}
+          <style>{`@keyframes toastIn { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }`}</style>
+        </div>
+      )}
       {/* Top bar — sticky, safe-area aware */}
       <div className="safe-top sticky top-0 z-10 glass-bar border-b-2" style={{ borderColor: 'var(--border)' }}>
         <div className="max-w-lg mx-auto flex items-center gap-3 px-4 py-3">
@@ -356,9 +375,12 @@ export default function SessionRunner({ sessionId, skillName, totalQuestions, in
                     animation: feedback.correct ? 'pop 0.4s ease-out' : 'shake 0.4s ease-in-out',
                   }}
                 >
-                  <p className="font-black text-xl mb-1" style={{ color: feedback.correct ? 'var(--correct)' : 'var(--wrong)' }}>
-                    {feedback.correct ? '✅ Correct!' : '❌ Not quite!'}
-                  </p>
+                  <div className="flex items-center gap-2 mb-1">
+                    {!feedback.correct && <Mascot mood="sad" size={40} />}
+                    <p className="font-black text-xl" style={{ color: feedback.correct ? 'var(--correct)' : 'var(--wrong)' }}>
+                      {feedback.correct ? '✅ Correct!' : '❌ Not quite!'}
+                    </p>
+                  </div>
                   {!feedback.correct && (
                     <p className="font-semibold text-base mt-1" style={{ color: 'var(--wrong)' }}>
                       The answer is <strong>{feedback.correctAnswer}</strong>

@@ -65,16 +65,24 @@ export default async function Dashboard() {
         />
       )}
 
-      {/* Streak banner */}
-      {currentStreak > 0 && (
-        <div className="rounded-3xl p-4 mb-6 flex items-center gap-3" style={{ background: 'linear-gradient(135deg, #fed7aa, #fef3c7)' }}>
-          <span className="text-3xl">🔥</span>
-          <div>
-            <p className="font-black text-orange-700">{currentStreak}-day streak!</p>
-            <p className="text-orange-600 text-sm font-semibold">Keep it up — come back tomorrow!</p>
+      {/* Streak banner - every 5th day gets a small milestone callout in
+          the same slot, not a separate popup. */}
+      {currentStreak > 0 && (() => {
+        const milestone = currentStreak % 5 === 0
+        return (
+          <div className="rounded-3xl p-4 mb-6 flex items-center gap-3" style={{ background: 'linear-gradient(135deg, #fed7aa, #fef3c7)' }}>
+            <span className="text-3xl">{milestone ? '🎉' : '🔥'}</span>
+            <div>
+              <p className="font-black text-orange-700">
+                {milestone ? `${currentStreak} days — milestone! 🔥` : `${currentStreak}-day streak!`}
+              </p>
+              <p className="text-orange-600 text-sm font-semibold">
+                {milestone ? "That's serious dedication — keep it going!" : 'Keep it up — come back tomorrow!'}
+              </p>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       <SkillSection
         title="Math Skills"
