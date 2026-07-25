@@ -2,11 +2,9 @@ export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import { getAuthedUser, getHeaderData } from '@/lib/data/student'
-import StartSessionButton from '@/components/StartSessionButton'
+import SkillPath from '@/components/SkillPath'
 import Mascot from '@/components/Mascot'
 import CheckinCard from '@/components/CheckinCard'
-import { startingTier } from '@/lib/mastery'
-import { SKILL_ICONS, SKILL_COLORS } from '@/lib/skillDisplay'
 import { getCheckinData } from '@/app/actions/checkin'
 import type { Skill } from '@/types'
 
@@ -121,19 +119,13 @@ function SkillSection({
           <p className="text-xs font-bold text-gray-400 mt-1">Tap any skill to start with a quick check-in</p>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        {skills.map(skill => (
-          <StartSessionButton
-            key={skill.id}
-            skill={skill}
-            color={SKILL_COLORS[skill.slug] ?? '#6c63ff'}
-            icon={SKILL_ICONS[skill.slug] ?? '📐'}
-            tier={tierBySkill.get(skill.id) ?? startingTier(skill.slug, grade)}
-            diagnosticDone={diagnosticDone}
-            dueForReview={dueForReview.has(skill.id)}
-          />
-        ))}
-      </div>
+      <SkillPath
+        skills={skills}
+        tierBySkill={tierBySkill}
+        dueForReview={dueForReview}
+        grade={grade}
+        diagnosticDone={diagnosticDone}
+      />
     </>
   )
 }

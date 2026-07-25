@@ -16,7 +16,11 @@ interface Props {
 }
 
 const READING_COMPREHENSION_SLUG = 'english-reading-comprehension'
+const NODE_SIZE = 74
 
+// Renders one circular node on the skill path (components/SkillPath.tsx) -
+// the click-to-start/routing logic below is the only place that logic
+// lives, so the path never forks it.
 export default function StartSessionButton({ skill, color, icon, tier, diagnosticDone, dueForReview = false }: Props) {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -44,53 +48,52 @@ export default function StartSessionButton({ skill, color, icon, tier, diagnosti
   }
 
   return (
-    <button
-      onClick={handleClick}
-      disabled={loading}
-      className="btn-3d relative rounded-3xl text-left w-full"
-      style={{
-        background: 'var(--surface)',
-        borderTopColor: `color-mix(in srgb, ${color} 35%, var(--border))`,
-        borderLeftColor: `color-mix(in srgb, ${color} 35%, var(--border))`,
-        borderRightColor: `color-mix(in srgb, ${color} 35%, var(--border))`,
-        borderBottomColor: `color-mix(in srgb, ${color} 70%, black)`,
-        padding: '20px 18px',
-        minHeight: 110,
-        opacity: loading ? 0.7 : 1,
-      }}
-    >
-      {!isReading && (
-        <span
-          className="absolute top-3 right-3 text-xs font-black rounded-full px-2 py-0.5 text-white"
-          style={{ background: color }}
+    <button onClick={handleClick} disabled={loading} className="relative flex flex-col items-center gap-1.5" style={{ width: 92, opacity: loading ? 0.7 : 1 }}>
+      <div className="relative">
+        <div
+          className="btn-3d relative rounded-full flex items-center justify-center"
+          style={{
+            width: NODE_SIZE,
+            height: NODE_SIZE,
+            background: 'var(--surface)',
+            borderTopColor: `color-mix(in srgb, ${color} 35%, var(--border))`,
+            borderLeftColor: `color-mix(in srgb, ${color} 35%, var(--border))`,
+            borderRightColor: `color-mix(in srgb, ${color} 35%, var(--border))`,
+            borderBottomColor: `color-mix(in srgb, ${color} 70%, black)`,
+            borderBottomWidth: 6,
+          }}
         >
-          Lv {tier}
-        </span>
-      )}
-      {dueForReview && (
-        <span
-          className="absolute top-3 left-3 text-xs font-black rounded-full px-2 py-0.5 text-white"
-          style={{ background: 'var(--xp)' }}
-        >
-          🔁 Review
-        </span>
-      )}
-      <div className="relative inline-flex items-center justify-center mb-2" style={{ width: 48, height: 48 }}>
+          {!isReading && (
+            <div
+              className="absolute inset-0 rounded-full"
+              style={{
+                background: `conic-gradient(${color} ${(tier / MAX_TIER) * 360}deg, color-mix(in srgb, ${color} 20%, var(--surface)) 0deg)`,
+                WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px))',
+                mask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px))',
+              }}
+            />
+          )}
+          <span style={{ fontSize: 30, lineHeight: 1, position: 'relative' }}>{loading ? '⏳' : icon}</span>
+        </div>
         {!isReading && (
-          <div
-            className="absolute inset-0 rounded-full"
-            style={{
-              background: `conic-gradient(${color} ${(tier / MAX_TIER) * 360}deg, color-mix(in srgb, ${color} 20%, var(--surface)) 0deg)`,
-              WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
-              mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
-            }}
-          />
+          <span
+            className="absolute -top-1.5 -right-1.5 text-[0.65rem] font-black rounded-full px-1.5 py-0.5 text-white"
+            style={{ background: color, border: '2px solid var(--bg)' }}
+          >
+            {tier}
+          </span>
         )}
-        <span style={{ fontSize: 28, lineHeight: 1, position: 'relative' }}>{loading ? '⏳' : icon}</span>
+        {dueForReview && (
+          <span
+            className="absolute -top-1.5 -left-1.5 text-xs rounded-full flex items-center justify-center"
+            style={{ background: 'var(--xp)', border: '2px solid var(--bg)', width: 22, height: 22 }}
+          >
+            🔁
+          </span>
+        )}
       </div>
-      <div className="font-black" style={{ color: 'var(--text)', fontSize: '1.05rem' }}>{skill.name}</div>
-      <div className="font-semibold mt-1" style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>
-        {loading ? 'Starting…' : 'Tap to practice'}
+      <div className="font-black text-center leading-tight" style={{ color: 'var(--text)', fontSize: '0.72rem' }}>
+        {skill.name}
       </div>
     </button>
   )
