@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 
 const TABS = [
   { href: '/dashboard', label: 'Home', icon: '🏠' },
+  { href: '/collection', label: 'Collect', icon: '🎁' },
   { href: '/leaderboard', label: 'Leaders', icon: '🏆' },
   { href: '/stats', label: 'Stats', icon: '📊' },
   { href: '/profile', label: 'Profile', icon: '👤' },
@@ -14,7 +15,7 @@ export default function TabBar() {
   const pathname = usePathname()
   return (
     <nav className="safe-bottom fixed bottom-0 inset-x-0 z-20 glass-bar border-t-2" style={{ borderColor: 'var(--border)' }}>
-      <div className="max-w-lg mx-auto grid grid-cols-4">
+      <div className="max-w-lg mx-auto grid grid-cols-5">
         {TABS.map(tab => {
           const active = pathname === tab.href
           return (
