@@ -19,7 +19,7 @@ Does he actually open it and enjoy it. Everything else is downstream of that. So
 - Enough published math to run real sessions
 - Ship this to him and watch. This is the wedge test. Does he come back without being told
 
-Do not proceed to Phase 2 until Phase 1 actually hooks him. If it does not, fix the loop, not the subject list.
+**Status: done, wedge test informally passed.** Deployed since 2026-07-20 with 17+ real sessions of sustained use on the account in active use — no separate written verdict was ever recorded, but the usage data itself is the answer. Do not proceed to Phase 2 until Phase 1 actually hooks him. If it does not, fix the loop, not the subject list.
 
 ## Phase 2. Review pipeline plus English
 
@@ -32,6 +32,11 @@ Do not proceed to Phase 2 until Phase 1 actually hooks him. If it does not, fix 
 
 ## Phase 3. Tamil
 
+**Status: explicitly on hold — do not start without being asked**,
+even though every other phase has since shipped. This is the one
+phase that hasn't followed the "each phase unblocks the next" order
+below; it's parked by request, not by an unmet gate.
+
 - Hand-seed the core script and vocabulary (04)
 - AI-assisted exercise variation over the verified set, everything reviewed
 - Add audio for the core set, self-recorded if that is the reliable route
@@ -39,18 +44,27 @@ Do not proceed to Phase 2 until Phase 1 actually hooks him. If it does not, fix 
 
 ## Phase 4. Leaderboard
 
-**Status: shipped in reduced scope, deliberately.** Single weekly board (not full multi-league promotion), cohort by grade. Bots use a deterministic seeded function computed live at read time instead of a scheduled job — same effect (a believable weekly earning timeline per bot) without needing a cron job. Leagues/promotion ladder and tournaments were explicitly deferred, not forgotten - revisit if the single board stops feeling like enough.
+**Status: done, including leagues.** Weekly board, cohort by grade, bots use a deterministic seeded function computed live at read time instead of a scheduled job — same effect (a believable weekly earning timeline per bot) without needing a cron job. Leagues (Bronze through Diamond, promotion-only) shipped later (supabase/migrations/015_leaderboard_leagues.sql) — the "deferred" note that used to be here is stale, tournaments are the only piece still not built.
 
-- ~~Weekly board, cohort by grade (06)~~ — done, single board
+- ~~Weekly board, cohort by grade (06)~~ — done
 - ~~Bots as pre-generated weekly earning timelines~~ — done, computed live instead of scheduled
-- Tune the distribution so his normal effort is mid-pack and a strong week tops it — not yet validated against real usage
-- Leagues, promotion/relegation, tournaments — deferred
+- ~~Leagues, promotion ladder (Bronze-Diamond)~~ — done, promotion-only (no relegation)
+- Tournaments — still not built
+- Tune the distribution so his normal effort is mid-pack and a strong week tops it — not yet formally validated against real usage, but real usage exists now to validate against
 
-## Phase 5. Adaptive engine, later
+## Phase 5. Adaptive engine
 
-- Only after the above is stable and he is using it
-- Start with the simple version in 08. Per-skill mastery plus spaced re-queue, from data you already store
-- Built on real learning science, not learning styles
+**Status: both signals from 08's "simple first version" are done.**
+
+- ~~Per-skill mastery, tier stepping ±1 per question~~ — done, tier
+  scale later widened from 1-3 to 1-5 (supabase/migrations/016_widen_tiers.sql)
+  so it keeps differentiating difficulty past grade 5
+- ~~Spaced review — missed items re-queued sooner, aced items pushed
+  out further~~ — done (`due_for_review_at` on user_skill_progress,
+  supabase/migrations/014_spaced_review.sql)
+- Interleaving, finer-grained difficulty control beyond the 5-tier
+  scale — not built, per 08's own "add only if the simple version
+  clearly helps" guidance
 
 ## How to know each phase worked
 
@@ -62,4 +76,9 @@ Do not proceed to Phase 2 until Phase 1 actually hooks him. If it does not, fix 
 
 ## Handoff to Claude Code
 
-Build in Claude Code from these files. Start with Phase 0 and Phase 1 only. Point Claude Code at 07 for the schema, 01 for the loop, and 02 for math generation. Leave the rest for later phases so the first build stays small and you get it in front of him fast.
+Phases 0, 1, 2, 4, and 5's first slice are built and live (see status
+notes above and AGENTS.md's "Current state" for the full current
+feature list) — this section's original "start with Phase 0/1 only"
+instruction is historical, not current guidance. Phase 3 (Tamil)
+remains the one phase still gated, on hold by explicit request rather
+than an unmet build-order dependency.

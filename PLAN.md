@@ -1,5 +1,15 @@
 # LEARNLOOP — PRD & Roadmap (standing plan)
 
+**Status as of 2026-08-09: M1 and M2 are done. M3's wedge test has no
+formal written verdict, but 17+ real sessions of sustained use since
+2026-07-20 is a strong informal "hooked" signal.** Phases well beyond
+what this file's M4 gate anticipated have since shipped (English,
+leaderboard leagues, spaced review, a full UI redesign) — see
+docs/10-build-plan.md for what's actually built, and AGENTS.md's
+"Current state" for the full current feature list. This file is kept
+as the original launch narrative/rationale, not a live task list —
+don't treat its M4 gate as still blocking new work.
+
 Execute task by task, in order. Read AGENTS.md first (hard rules), and
 docs/10-build-plan.md (the phase logic). This plan operationalizes the
 next phases — it does not replace the docs/ spec.
