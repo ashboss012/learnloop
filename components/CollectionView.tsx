@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { getCollectionState, selectSeason, openChest, type CollectionCharacter } from '@/app/actions/characters'
+import { getCollectionState, selectSeason, openChest, type CollectionCharacter, type CustomCharacter } from '@/app/actions/characters'
 import CharacterAvatar from '@/components/CharacterAvatar'
+import CharacterCustomizer from '@/components/CharacterCustomizer'
 
 interface Season { slug: string; name: string; icon: string }
 
@@ -10,6 +11,7 @@ interface State {
   seasons: Season[]
   activeSeason: string | null
   characters: CollectionCharacter[]
+  customCharacters: CustomCharacter[]
   chestsAvailable: number
   secondsToNextChest: number
   secondsPerChest: number
@@ -26,6 +28,7 @@ export default function CollectionView({ initial }: { initial: State }) {
   const [switching, setSwitching] = useState(false)
   const [opening, setOpening] = useState(false)
   const [reveal, setReveal] = useState<RevealResult | null>(null)
+  const [customizing, setCustomizing] = useState(false)
 
   async function refresh() {
     const next = await getCollectionState()
@@ -136,6 +139,40 @@ export default function CollectionView({ initial }: { initial: State }) {
           </p>
         )}
       </div>
+
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-black text-lg">Your Creations</h2>
+          <button
+            onClick={() => setCustomizing(true)}
+            className="rounded-2xl font-black shrink-0"
+            style={{ padding: '8px 14px', background: 'var(--primary)', color: 'white', fontSize: '0.85rem' }}
+          >
+            + Create Character
+          </button>
+        </div>
+        {state.customCharacters.length > 0 ? (
+          <div className="grid grid-cols-3 gap-4">
+            {state.customCharacters.map(c => (
+              <div key={c.id} className="flex flex-col items-center gap-1.5">
+                <CharacterAvatar design={c.design} size={72} />
+                <span className="font-black text-center" style={{ fontSize: '0.7rem', color: 'var(--text)' }}>{c.name}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-center font-semibold py-6 rounded-3xl" style={{ color: 'var(--muted)', background: 'var(--surface)', border: '2px solid var(--border)' }}>
+            No creations yet — make your own ninja!
+          </p>
+        )}
+      </div>
+
+      {customizing && (
+        <CharacterCustomizer
+          onClose={() => setCustomizing(false)}
+          onCreated={created => setState(prev => ({ ...prev, customCharacters: [...prev.customCharacters, created] }))}
+        />
+      )}
 
       {reveal && (
         <div

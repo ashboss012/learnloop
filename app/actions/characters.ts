@@ -19,6 +19,14 @@ export interface CollectionCharacter {
   owned: boolean
 }
 
+export interface CustomCharacter {
+  id: string
+  name: string
+  design: CharacterDesign
+}
+
+const MAX_CUSTOM_NAME_LENGTH = 20
+
 type CharacterRow = { id: string; name: string; flavor_text: string; rarity: string; design: CharacterDesign }
 
 async function getTotalSeconds(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<number> {
@@ -31,10 +39,11 @@ export async function getCollectionState() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  const [{ data: profile }, { data: seasons }, { data: ownedRows }, totalSeconds] = await Promise.all([
+  const [{ data: profile }, { data: seasons }, { data: ownedRows }, { data: customRows }, totalSeconds] = await Promise.all([
     supabase.from('users').select('current_season, chests_opened_count').eq('id', user.id).single(),
     supabase.from('character_seasons').select('slug, name, icon').order('sort_order'),
     supabase.from('user_characters').select('character_id').eq('user_id', user.id),
+    supabase.from('custom_characters').select('id, name, design').eq('user_id', user.id).order('created_at'),
     getTotalSeconds(supabase, user.id),
   ])
   if (!profile) return { error: 'Profile not found' }
@@ -67,10 +76,33 @@ export async function getCollectionState() {
     seasons: seasons ?? [],
     activeSeason,
     characters,
+    customCharacters: (customRows ?? []) as CustomCharacter[],
     chestsAvailable,
     secondsToNextChest,
     secondsPerChest: SECONDS_PER_CHEST,
   }
+}
+
+export async function createCustomCharacter(
+  name: string,
+  design: CharacterDesign
+): Promise<{ error: string } | { character: CustomCharacter }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const trimmed = name.trim().slice(0, MAX_CUSTOM_NAME_LENGTH)
+  if (!trimmed) return { error: 'Give your character a name' }
+
+  const { data, error } = await supabase
+    .from('custom_characters')
+    .insert({ user_id: user.id, name: trimmed, design })
+    .select('id, name, design')
+    .single()
+  if (error || !data) return { error: error?.message ?? 'Failed to save character' }
+
+  revalidatePath('/collection')
+  return { character: data as CustomCharacter }
 }
 
 export async function selectSeason(slug: string) {

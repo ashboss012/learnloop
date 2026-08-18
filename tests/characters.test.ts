@@ -4,7 +4,7 @@ vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('@/lib/supabase/server')
 
 import { createClient } from '@/lib/supabase/server'
-import { openChest, getCollectionState } from '@/app/actions/characters'
+import { openChest, getCollectionState, createCustomCharacter } from '@/app/actions/characters'
 
 type MockClient = Awaited<ReturnType<typeof createClient>>
 
@@ -148,6 +148,7 @@ function clientForCollectionState({
   ownedCharacterIds = [] as string[],
   seasons = [{ slug: 'ninja', name: 'Ninja Squad', icon: '🥷' }],
   seasonCharacters = [CHAR_A, CHAR_B],
+  customCharacters = [] as { id: string; name: string; design: unknown }[],
 } = {}) {
   const rpc = vi.fn().mockResolvedValue({ data: totalSeconds, error: null })
   const tables: Record<string, unknown> = {
@@ -175,6 +176,13 @@ function clientForCollectionState({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           order: vi.fn().mockResolvedValue({ data: seasonCharacters, error: null }),
+        }),
+      }),
+    },
+    custom_characters: {
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          order: vi.fn().mockResolvedValue({ data: customCharacters, error: null }),
         }),
       }),
     },
@@ -207,5 +215,82 @@ describe('getCollectionState', () => {
       expect(result.characters.find(c => c.id === 'char-a')?.owned).toBe(true)
       expect(result.characters.find(c => c.id === 'char-b')?.owned).toBe(false)
     }
+  })
+
+  test('includes the user\'s custom characters', async () => {
+    const custom = [{ id: 'custom-1', name: 'Zoom', design: { shape: 'ninja', color: '#000', accent: '#fff' } }]
+    const client = clientForCollectionState({ customCharacters: custom })
+    vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
+
+    const result = await getCollectionState()
+
+    if (!('error' in result)) expect(result.customCharacters).toEqual(custom)
+  })
+})
+
+// ── createCustomCharacter ─────────────────────────────────────────────────────
+
+function clientForCreateCustomCharacter({ insertError = null as string | null } = {}) {
+  const inserted: { user_id: string; name: string; design: unknown }[] = []
+  const table = {
+    insert: vi.fn().mockImplementation((row: { user_id: string; name: string; design: unknown }) => {
+      inserted.push(row)
+      return {
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue(
+            insertError
+              ? { data: null, error: { message: insertError } }
+              : { data: { id: 'custom-1', name: row.name, design: row.design }, error: null }
+          ),
+        }),
+      }
+    }),
+  }
+  return {
+    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: USER_ID } } }) },
+    from: vi.fn().mockImplementation((table_: string) => (table_ === 'custom_characters' ? table : {})),
+    _inserted: inserted,
+  }
+}
+
+describe('createCustomCharacter', () => {
+  const design = { shape: 'ninja' as const, color: '#0ea5e9', accent: '#ffffff', pose: 'ready' as const }
+
+  test('trims the name and saves the chosen design', async () => {
+    const client = clientForCreateCustomCharacter()
+    vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
+
+    const result = await createCustomCharacter('  Zoom  ', design)
+
+    expect('error' in result).toBe(false)
+    expect(client._inserted[0]).toEqual({ user_id: USER_ID, name: 'Zoom', design })
+  })
+
+  test('rejects a blank name without inserting a row', async () => {
+    const client = clientForCreateCustomCharacter()
+    vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
+
+    const result = await createCustomCharacter('   ', design)
+
+    expect('error' in result).toBe(true)
+    expect(client._inserted.length).toBe(0)
+  })
+
+  test('truncates names beyond 20 characters', async () => {
+    const client = clientForCreateCustomCharacter()
+    vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
+
+    await createCustomCharacter('A'.repeat(30), design)
+
+    expect(client._inserted[0].name.length).toBe(20)
+  })
+
+  test('surfaces an insert error', async () => {
+    const client = clientForCreateCustomCharacter({ insertError: 'db down' })
+    vi.mocked(createClient).mockResolvedValue(client as unknown as MockClient)
+
+    const result = await createCustomCharacter('Zoom', design)
+
+    expect('error' in result).toBe(true)
   })
 })
