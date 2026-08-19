@@ -50,7 +50,7 @@ export default function SessionRunner({ sessionId, skillName, totalQuestions, in
   const [phase, setPhase] = useState<Phase>('question')
   const [selected, setSelected] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<FeedbackState | null>(null)
-  const [completionData, setCompletionData] = useState<{ xp: number; streak: number; perfect: boolean; leveledUp: boolean; skippedAhead: boolean } | null>(null)
+  const [completionData, setCompletionData] = useState<{ xp: number; coins: number; streak: number; perfect: boolean; leveledUp: boolean; skippedAhead: boolean } | null>(null)
   const [levelUpTier, setLevelUpTier] = useState<number | null>(null)
 
   // Small auto-dismissing toast, not a blocking screen - a tier step up
@@ -76,6 +76,7 @@ export default function SessionRunner({ sessionId, skillName, totalQuestions, in
     const r = res as Record<string, unknown>
     setCompletionData({
       xp: 50 + firstAttemptCorrectCount * 5,
+      coins: typeof r.coinsEarned === 'number' ? r.coinsEarned : 0,
       streak: typeof r.streak === 'number' ? r.streak : 0,
       perfect: r.perfect === true,
       leveledUp: r.leveledUp === true,
@@ -146,6 +147,7 @@ export default function SessionRunner({ sessionId, skillName, totalQuestions, in
       if (res.passed) {
         setCompletionData({
           xp: res.xpEarned,
+          coins: typeof res.coinsEarned === 'number' ? res.coinsEarned : 0,
           streak: typeof res.streak === 'number' ? res.streak : 0,
           perfect: false,
           leveledUp: false,
@@ -225,6 +227,7 @@ export default function SessionRunner({ sessionId, skillName, totalQuestions, in
     return (
       <CompletionScreen
         xp={completionData.xp}
+        coins={completionData.coins}
         streak={completionData.streak}
         perfect={completionData.perfect}
         leveledUp={completionData.leveledUp}
@@ -429,9 +432,10 @@ export default function SessionRunner({ sessionId, skillName, totalQuestions, in
 }
 
 function CompletionScreen({
-  xp, streak, perfect, leveledUp, skippedAhead, onDone,
+  xp, coins, streak, perfect, leveledUp, skippedAhead, onDone,
 }: {
   xp: number
+  coins: number
   streak: number
   perfect: boolean
   leveledUp: boolean
@@ -486,6 +490,10 @@ function CompletionScreen({
         <div className="flex items-center justify-between mb-3">
           <span className="font-bold text-gray-600 text-lg">XP Earned</span>
           <span className="font-black text-3xl" style={{ color: 'var(--xp)' }}>+{xp} ⚡</span>
+        </div>
+        <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
+          <span className="font-bold text-gray-600 text-lg">Coins Earned</span>
+          <span className="font-black text-3xl" style={{ color: '#ca8a04' }}>+{coins} 🪙</span>
         </div>
         {streak > 0 && (
           <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: 'var(--border)' }}>

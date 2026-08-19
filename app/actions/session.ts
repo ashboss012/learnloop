@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { generateQuestion } from '@/lib/questionGenerator'
 import { startingTier, MAX_TIER, type Tier } from '@/lib/mastery'
+import { calculateCoinsEarned } from '@/lib/coins'
 import { revalidatePath } from 'next/cache'
 
 const SESSION_LENGTH = 8
@@ -324,7 +325,7 @@ export async function completeSession(sessionId: string) {
 
   const { data: session } = await supabase
     .from('sessions')
-    .select('user_id, status, skill_id, question_count')
+    .select('user_id, status, skill_id, question_count, started_at')
     .eq('id', sessionId)
     .single()
 
@@ -351,6 +352,18 @@ export async function completeSession(sessionId: string) {
   })
   const perfect = attempts.length === session.question_count && attempts.every(a => a.was_correct)
 
+  // Coins reward accuracy and speed, unlike the flat XP_PER_SESSION award -
+  // reuses answer/timing data already gathered above and on the session
+  // row, no new instrumentation (see lib/coins.ts).
+  const correctCount = attempts.filter(a => a.was_correct).length
+  const accuracy = attempts.length > 0 ? correctCount / attempts.length : 0
+  const completedAt = new Date()
+  const durationSeconds = session.started_at
+    ? Math.max(0, (completedAt.getTime() - new Date(session.started_at).getTime()) / 1000)
+    : 0
+  const avgSecondsPerQuestion = session.question_count > 0 ? durationSeconds / session.question_count : durationSeconds
+  const coinsEarned = calculateCoinsEarned({ accuracy, avgSecondsPerQuestion })
+
   // Spaced review, unconditionally on every completion - a missed session
   // resurfaces this skill tomorrow, a perfect one pushes it out further.
   const { data: progress } = await supabase
@@ -361,7 +374,7 @@ export async function completeSession(sessionId: string) {
     .single()
   const currentTier = progress?.tier ?? 1
   const leveledUp = perfect && currentTier < MAX_TIER
-  const now = new Date().toISOString()
+  const now = completedAt.toISOString()
   await supabase.from('user_skill_progress').upsert(
     {
       user_id: user.id,
@@ -376,15 +389,16 @@ export async function completeSession(sessionId: string) {
 
   await supabase
     .from('sessions')
-    .update({ status: 'completed', xp_earned: XP_PER_SESSION, completed_at: new Date().toISOString() })
+    .update({ status: 'completed', xp_earned: XP_PER_SESSION, completed_at: now })
     .eq('id', sessionId)
 
   await supabase.rpc('increment_xp', { uid: user.id, amount: XP_PER_SESSION })
+  await supabase.rpc('increment_coins', { uid: user.id, amount: coinsEarned })
   const { data: streakData } = await supabase.rpc('update_streak', { uid: user.id })
 
   revalidatePath('/dashboard')
 
-  return { xpEarned: XP_PER_SESSION, streak: streakData, perfect, leveledUp }
+  return { xpEarned: XP_PER_SESSION, coinsEarned, streak: streakData, perfect, leveledUp }
 }
 
 // Skip-ahead checkpoint: offered mid-session to a student who's clearly
@@ -451,7 +465,7 @@ export async function resolveSkipCheckpoint(sessionId: string) {
 
   const { data: session } = await supabase
     .from('sessions')
-    .select('user_id, status, skill_id, question_count')
+    .select('user_id, status, skill_id, question_count, started_at')
     .eq('id', sessionId)
     .single()
   if (!session || session.user_id !== user.id) return { error: 'Forbidden' }
@@ -474,9 +488,22 @@ export async function resolveSkipCheckpoint(sessionId: string) {
   const passed = checkpointAnswers.every(a => a.was_correct)
   if (!passed) return { passed: false as const }
 
+  // Coins reward accuracy and speed across every question answered this
+  // session (primary + checkpoint), same lib/coins.ts formula as
+  // completeSession above.
+  const correctCount = ((answers ?? []) as AnswerRow[]).filter(a => a.was_correct).length
+  const totalAnswered = (answers ?? []).length
+  const accuracy = totalAnswered > 0 ? correctCount / totalAnswered : 0
+  const completedAt = new Date()
+  const durationSeconds = session.started_at
+    ? Math.max(0, (completedAt.getTime() - new Date(session.started_at).getTime()) / 1000)
+    : 0
+  const avgSecondsPerQuestion = totalAnswered > 0 ? durationSeconds / totalAnswered : durationSeconds
+  const coinsEarned = calculateCoinsEarned({ accuracy, avgSecondsPerQuestion })
+
   // Passing the checkpoint is itself a strong-performance signal - same
   // spaced-review treatment as a perfect full session.
-  const now = new Date().toISOString()
+  const now = completedAt.toISOString()
   await supabase.from('user_skill_progress').upsert(
     {
       user_id: user.id,
@@ -491,15 +518,16 @@ export async function resolveSkipCheckpoint(sessionId: string) {
 
   await supabase
     .from('sessions')
-    .update({ status: 'completed', xp_earned: XP_PER_SESSION, completed_at: new Date().toISOString() })
+    .update({ status: 'completed', xp_earned: XP_PER_SESSION, completed_at: now })
     .eq('id', sessionId)
 
   await supabase.rpc('increment_xp', { uid: user.id, amount: XP_PER_SESSION })
+  await supabase.rpc('increment_coins', { uid: user.id, amount: coinsEarned })
   const { data: streakData } = await supabase.rpc('update_streak', { uid: user.id })
 
   revalidatePath('/dashboard')
 
-  return { passed: true as const, xpEarned: XP_PER_SESSION, streak: streakData }
+  return { passed: true as const, xpEarned: XP_PER_SESSION, coinsEarned, streak: streakData }
 }
 
 export async function getSessionProgress(sessionId: string) {
