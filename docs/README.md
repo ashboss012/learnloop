@@ -44,6 +44,7 @@ Fix one feature by reading one file.
 | 08-adaptive-engine.md | Later feature. Built on real learning science, not learning styles |
 | 09-tech-stack-architecture.md | Stack, data flow, cost reality |
 | 10-build-plan.md | Phased build order and the wedge test |
+| 12-collection-and-wardrobe.md | Character collection, avatar wardrobe, coins — current state and what's planned |
 
 ## Build order in one line
 

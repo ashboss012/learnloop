@@ -74,6 +74,7 @@ working on this project must refuse to add them unprompted:
 | 08-adaptive-engine.md | Adaptive engine (LATER) — built on real learning science (spaced repetition, retrieval practice, mastery progression), NOT learning styles, which are debunked. |
 | 09-tech-stack-architecture.md | Stack decisions |
 | 10-build-plan.md | Phase order + why — READ BEFORE ADDING FEATURES |
+| 12-collection-and-wardrobe.md | Character collection + avatar wardrobe — current state, what's planned |
 
 Build-plan discipline: Phases 0-2, 4, and a first slice of 5 have
 shipped and are live with real usage (see "Current state" below).
@@ -99,7 +100,7 @@ been asked for in a given session.
 - Deploy: Vercel (learnloop-sooty.vercel.app), linked to this GitHub
   repo for auto-deploy on push to master
 
-## Current state (as of 2026-08-09 — deployed, real usage, well past Phase 1)
+## Current state (as of 2026-08-20 — deployed, real usage, well past Phase 1)
 
 - **Live in production**, real usage since 2026-07-20 (17+ real sessions
   on the account in active use). The M1-M3 wedge test from PLAN.md has
@@ -168,20 +169,47 @@ been asked for in a given session.
   layered on the pre-existing confetti/completion screens.
 - lib/questionGenerator.ts routes generateQuestion() by slug prefix
   (math-*/english-*) to the right subject's generator module
+- **Character Collection** (docs/12, `/collection` "Characters" tab):
+  whole-character unlocks organized into switchable "seasons"
+  (character_seasons/characters/user_characters, migration 017).
+  Ninja Squad ships fully seeded (8 original characters — no licensed
+  IP, see "Never build these"); Hero Roster and Vehicle Garage exist
+  as seasons with zero characters yet. Chests earn from **cumulative**
+  learning time (1 per 20 min total, `total_learning_seconds()` RPC,
+  each session capped at 20 min). Bodies are a parametric SVG
+  (components/CharacterAvatar.tsx, 4 reusable pose templates, palette
+  restrained to blue/red/black). Students can also build their own
+  character (color/pose/name picker, not freeform drawing) via
+  components/CharacterCustomizer.tsx — stored in custom_characters,
+  personal per-student, never chest-gated.
+- **Wardrobe** (docs/12, `/collection` "Avatar" tab): a separate,
+  Roblox-style system — one blocky layered avatar
+  (components/AvatarView.tsx) dressed in owned shirts/pants/
+  accessories (wardrobe_items/user_wardrobe_items, migrations 020-022).
+  11-item starter catalog across common/rare/epic/legendary. **Coins**
+  are a currency separate from XP: earned per completed practice
+  session scaled by accuracy + speed (lib/coins.ts, wired into
+  completeSession/resolveSkipCheckpoint), and from a **daily** chest
+  gated on 30 min of practice *that calendar day*
+  (`today_practice_seconds`/`wardrobe_chest_available` RPCs — a
+  different gate than the character system's cumulative chest, by
+  deliberate choice; the two systems don't share a pool). Items can
+  also be bought directly with coins in-app (no chest needed).
+  Deliberately kept separate from Character Collection rather than
+  merged — see docs/12 for why.
 - Schema + RLS + skill seed in supabase/migrations/001_initial.sql,
-  extended by 15 further numbered migrations since (002 through 016 —
+  extended by 21 further numbered migrations since (002 through 022 —
   see supabase/migrations/ for the full list). Diagnostic, leaderboard
-  leagues, spaced review, reading comprehension, vocabulary, and the
-  tier widening each landed as their own migration; word problems rode
-  the same 016_widen_tiers.sql migration as the tier widening (new
-  skill row, no schema change of its own). Run `list_migrations`
-  against the Supabase project (id csmvrwqtlxolwnjocfdy) to confirm
-  what's actually applied rather than trusting this list to stay
-  current.
+  leagues, spaced review, reading comprehension, vocabulary, tier
+  widening, character collection, and the wardrobe system each landed
+  as their own migration(s). Run `list_migrations` against the
+  Supabase project (id csmvrwqtlxolwnjocfdy) to confirm what's
+  actually applied rather than trusting this list to stay current.
 - **Known rough edges, not yet fixed:**
-  - No GitHub webhook exists for auto-deploy — `git push` alone does
-    NOT deploy to Vercel; run `vercel --prod` explicitly (or verify
-    the Vercel dashboard's Git integration before assuming otherwise).
+  - GitHub auto-deploy is now wired up (fixed 2026-08-09) — `git push`
+    to master triggers a Vercel production deploy. Still worth
+    confirming via `vercel ls` after a push if a deploy seems to not
+    have landed, rather than assuming it silently works forever.
   - Supabase free tier auto-pauses the DB after a stretch of
     inactivity — if a live check shows empty data / timeouts, check
     project status first (`get_project`) before assuming a code bug.
@@ -189,6 +217,17 @@ been asked for in a given session.
     blank account, no recovery path. A duplicate early account exists
     from 2026-07-15 (abandoned 07-18) — confirmed as early testing,
     left in place, not the real user's lost progress.
+  - The Next.js dev server (`npm run dev`) mints a fresh anonymous
+    account on effectively every full page navigation in some
+    environments (observed during 2026-08-19 browser-based testing —
+    ~19 throwaway accounts created in one session). Cookie persistence
+    works fine in the deployed production environment; this appears
+    dev-server/tooling-specific. If a live dev-mode check shows
+    unexpected zeroed-out state, suspect a fresh anon account before
+    assuming a data bug — check `public.users` by `created_at` cluster.
+  - Wardrobe shop has no "preview on avatar before buying" and no
+    duplicate/re-roll protection beyond plain ownership dedup — both
+    flagged as possible follow-ups, not yet requested.
 
 ## Environment
 
